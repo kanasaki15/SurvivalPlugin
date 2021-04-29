@@ -29,6 +29,7 @@ public final class SurvivalPlugin extends JavaPlugin {
 
         if (!flag){
             getServer().createWorld(WorldCreator.name("sigen"));
+            getServer().getWorld("sigen").setTime(getServer().getWorld("world").getTime());
         }
 
 
