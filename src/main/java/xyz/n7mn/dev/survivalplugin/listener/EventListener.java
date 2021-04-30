@@ -54,7 +54,38 @@ public class EventListener implements Listener {
 
                 Connection con = DriverManager.getConnection("jdbc:mysql://" + plugin.getConfig().getString("mysqlServer") + ":" + plugin.getConfig().getInt("mysqlPort") + "/" + plugin.getConfig().getString("mysqlDatabase") + plugin.getConfig().getString("mysqlOption"), plugin.getConfig().getString("mysqlUsername"), plugin.getConfig().getString("mysqlPassword"));
 
-                // TODO: 新規チェックからのメッセージ挿入(TableName : SurvivalUser)
+                PreparedStatement statement = con.prepareStatement("SELECT * FROM SurvivalUser WHERE UUID = ?");
+                statement.setString(1, e.getPlayer().getUniqueId().toString());
+
+                ResultSet set = statement.executeQuery();
+                if (set.next()){
+                    for (Player player : plugin.getServer().getOnlinePlayers()){
+                        player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+e.getPlayer().getName()+"さんが入室しました！");
+                    }
+                    long count = set.getLong("Count");
+                    set.close();
+                    statement.close();
+                    count++;
+
+                    PreparedStatement statement1 = con.prepareStatement("UPDATE SurvivalUser SET LastJoinDate = NOW(), Count = ? WHERE UUID = ?");
+                    statement1.setLong(1, count);
+                    statement1.setString(2, e.getPlayer().getUniqueId().toString());
+                    statement1.execute();
+
+                    statement1.close();
+                    con.close();
+                    return;
+                }
+
+                statement.close();
+                for (Player player : plugin.getServer().getOnlinePlayers()){
+                    player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+e.getPlayer().getName()+"さんが新規に入室しました！ゆっくりしていってね！");
+                }
+
+                PreparedStatement statement1 = con.prepareStatement("INSERT INTO `SurvivalUser`(`UUID`, `FirstJoinDate`, `LastJoinDate`, `RoleID`, `Count`) VALUES (?,NOW(),NOW(),'',1)");
+                statement1.setString(1, e.getPlayer().getUniqueId().toString());
+                statement1.execute();
+                statement1.close();
 
                 con.close();
 
@@ -72,7 +103,7 @@ public class EventListener implements Listener {
 
         new Thread(()->{
             for (Player player : plugin.getServer().getOnlinePlayers()){
-                player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+e.getPlayer().getName()+"さんが退出しました！");
+                player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+e.getPlayer().getName()+"さんが退出しました！");
             }
         }).start();
     }

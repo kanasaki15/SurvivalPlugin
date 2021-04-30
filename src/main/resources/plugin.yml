@@ -12,6 +12,11 @@ commands:
   main:
     usage: '/main'
     description: ''
+  user:
+    usage: '/user <mcid>'
+    description: ''
+    permission: '7miseikatu.op'
+    permission-message: ''
   sethome:
     usage: '/sethome'
     description: ''
