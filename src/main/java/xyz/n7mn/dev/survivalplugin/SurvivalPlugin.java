@@ -10,6 +10,7 @@ import xyz.n7mn.dev.survivalplugin.command.SigenCommand;
 import xyz.n7mn.dev.survivalplugin.command.UserCommand;
 import xyz.n7mn.dev.survivalplugin.data.PlayerLocationData;
 import xyz.n7mn.dev.survivalplugin.listener.EventListener;
+import xyz.n7mn.dev.survivalplugin.tab.PlayerTabList;
 import xyz.n7mn.dev.survivalplugin.timer.WorldReCreateTimer;
 
 import java.util.ArrayList;
@@ -32,11 +33,12 @@ public final class SurvivalPlugin extends JavaPlugin {
         World sigen = getServer().getWorld("sigen");
         sigen.setTime(getServer().getWorld("world").getTime());
 
-        getLogger().info("sigenワールドの読み込みに成功しました。 seed : " + sigen.getSeed());
+        getLogger().info("資源ワールドの読み込みに成功しました。 seed : " + sigen.getSeed());
 
         getCommand("sigen").setExecutor(new SigenCommand(PlayerList, isMoveWorld));
         getCommand("main").setExecutor(new MainCommand(PlayerList));
-        getCommand("user").setExecutor(new UserCommand());
+        getCommand("user").setExecutor(new UserCommand(this));
+        getCommand("user").setTabCompleter(new PlayerTabList());
         getCommand("sethome").setExecutor(new SetHomeCommand());
 
         getServer().getPluginManager().registerEvents(new EventListener(this, list), this);
