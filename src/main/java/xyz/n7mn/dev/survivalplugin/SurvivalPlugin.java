@@ -45,9 +45,7 @@ public final class SurvivalPlugin extends JavaPlugin {
                     .addEventListeners(new ListenerAdapter() {
                         @Override
                         public void onMessageReceived(@NotNull MessageReceivedEvent event) {
-                            new Thread(()->{
-                                Bukkit.getServer().getPluginManager().callEvent(new DiscordonMessageReceivedEvent(event));
-                            }).start();
+                            Bukkit.getServer().getPluginManager().callEvent(new DiscordonMessageReceivedEvent(event));
                         }
                     })
                     .enableCache(CacheFlag.VOICE_STATE)
