@@ -97,26 +97,22 @@ public class EventListener implements Listener {
                 statement1.close();
 
                 con.close();
-
-                if (jda != null && jda.getStatus() == JDA.Status.CONNECTED){
-                    // plugin.getLogger().info("test");
-                    TextChannel channel = jda.getTextChannelById(plugin.getConfig().getString("NotificationChannel"));
-
-                    channel.getHistoryAfter(1, 100).queue(messageHistory -> {
-                        List<Message> list = messageHistory.getRetrievedHistory();
-                        net.kyori.adventure.text.TextComponent component = Component.text(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.UNDERLINE+list.size()+"件のおしらせ"+ChatColor.RESET+"があります。");
-                        component.clickEvent(net.kyori.adventure.text.event.ClickEvent.runCommand("/noti"));
-
-                        e.getPlayer().sendMessage(component);
-                    });
-                }
-
-
             } catch (Exception ex){
                 ex.printStackTrace();
             }
 
+            if (jda != null && jda.getStatus() == JDA.Status.CONNECTED){
+                // plugin.getLogger().info("test");
+                TextChannel channel = jda.getTextChannelById(plugin.getConfig().getString("NotificationChannel"));
 
+                channel.getHistoryAfter(1, 100).queue(messageHistory -> {
+                    List<Message> list = messageHistory.getRetrievedHistory();
+                    net.kyori.adventure.text.TextComponent component = Component.text(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.UNDERLINE+list.size()+"件のおしらせ"+ChatColor.RESET+"があります。");
+                    component.clickEvent(net.kyori.adventure.text.event.ClickEvent.runCommand("/noti"));
+
+                    e.getPlayer().sendMessage(component);
+                });
+            }
         }).start();
     }
 
