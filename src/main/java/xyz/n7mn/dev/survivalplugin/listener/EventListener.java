@@ -101,6 +101,9 @@ public class EventListener implements Listener {
                 ex.printStackTrace();
             }
 
+        }).start();
+
+        new Thread(()->{
             if (jda != null && jda.getStatus() == JDA.Status.CONNECTED){
                 // plugin.getLogger().info("test");
                 TextChannel channel = jda.getTextChannelById(plugin.getConfig().getString("NotificationChannel"));
