@@ -8,6 +8,7 @@ import xyz.n7mn.dev.survivalplugin.command.*;
 import xyz.n7mn.dev.survivalplugin.data.PlayerLocationData;
 import xyz.n7mn.dev.survivalplugin.listener.EventListener;
 import xyz.n7mn.dev.survivalplugin.tab.PlayerTabList;
+import xyz.n7mn.dev.survivalplugin.tab.UserHomeList;
 import xyz.n7mn.dev.survivalplugin.timer.WorldReCreateTimer;
 
 import java.util.ArrayList;
@@ -37,9 +38,9 @@ public final class SurvivalPlugin extends JavaPlugin {
         getCommand("user").setExecutor(new UserCommand(this));
         getCommand("user").setTabCompleter(new PlayerTabList());
         getCommand("sethome").setExecutor(new SetHomeCommand(this));
-        getCommand("sethome").setTabCompleter(new PlayerTabList());
+        getCommand("sethome").setTabCompleter(new UserHomeList(this));
         getCommand("delhome").setExecutor(new DelHomeCommand(this));
-        getCommand("delhome").setTabCompleter(new PlayerTabList());
+        getCommand("delhome").setTabCompleter(new UserHomeList(this));
         getCommand("home").setExecutor(new HomeCommand(this));
 
         getServer().getPluginManager().registerEvents(new EventListener(this, list), this);
