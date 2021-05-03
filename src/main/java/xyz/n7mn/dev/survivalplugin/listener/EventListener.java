@@ -110,8 +110,7 @@ public class EventListener implements Listener {
 
                 channel.getHistoryAfter(1, 100).queue(messageHistory -> {
                     List<Message> list = messageHistory.getRetrievedHistory();
-                    net.kyori.adventure.text.TextComponent component = Component.text(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.UNDERLINE+list.size()+"件のおしらせ"+ChatColor.RESET+"があります。");
-                    component.clickEvent(net.kyori.adventure.text.event.ClickEvent.runCommand("/noti"));
+                    net.kyori.adventure.text.TextComponent component = Component.text(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.UNDERLINE+list.size()+"件のおしらせ"+ChatColor.RESET+"があります。\n"+ChatColor.RESET+"※ お知らせは「/noti」で確認ができます。");
 
                     e.getPlayer().sendMessage(component);
                 });
