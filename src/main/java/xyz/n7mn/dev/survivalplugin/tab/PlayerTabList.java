@@ -30,6 +30,17 @@ public class PlayerTabList implements TabExecutor {
             list.add(player.getName());
         }
 
+        if (args.length == 1 && args[0].length() > 0){
+            List<String> list2 = new ArrayList<>(list);
+            for (String str : list2){
+                if (str.startsWith(args[0])){
+                    continue;
+                }
+
+                list.remove(str);
+            }
+        }
+
         return list;
     }
 }
