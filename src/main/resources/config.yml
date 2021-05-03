@@ -4,3 +4,7 @@ mysqlUsername: ''
 mysqlPassword: ''
 mysqlDatabase: ''
 mysqlOption: '?allowPublicKeyRetrieval=true&useSSL=false'
+
+discordToken: ''
+
+NotificationChannel: '838583904456802334'

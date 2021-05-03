@@ -1,6 +1,12 @@
 package xyz.n7mn.dev.survivalplugin.listener;
 
+import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.TextChannel;
+import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.kyori.adventure.text.Component;
+import net.md_5.bungee.api.chat.ClickEvent;
+import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -10,6 +16,7 @@ import org.bukkit.event.entity.EntityShootBowEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.Plugin;
+import xyz.n7mn.dev.survivalplugin.event.DiscordonMessageReceivedEvent;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -21,8 +28,10 @@ public class EventListener implements Listener {
 
     private final Plugin plugin;
     private List<UUID> PvPOnList;
-    public EventListener(Plugin plugin, List<UUID> pvponlist){
+    private final JDA jda;
+    public EventListener(Plugin plugin, List<UUID> pvponlist, JDA jda){
         this.plugin = plugin;
+        this.jda = jda;
 
         if (pvponlist == null){
             this.PvPOnList = new ArrayList<>();
@@ -89,6 +98,20 @@ public class EventListener implements Listener {
 
                 con.close();
 
+                if (jda != null && jda.getStatus() == JDA.Status.CONNECTED){
+                    // plugin.getLogger().info("test");
+                    TextChannel channel = jda.getTextChannelById(plugin.getConfig().getString("NotificationChannel"));
+
+                    channel.getHistoryAfter(1, 100).queue(messageHistory -> {
+                        List<Message> list = messageHistory.getRetrievedHistory();
+                        net.kyori.adventure.text.TextComponent component = Component.text(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.UNDERLINE+list.size()+"件のおしらせ"+ChatColor.RESET+"があります。");
+                        component.clickEvent(net.kyori.adventure.text.event.ClickEvent.runCommand("/noti"));
+
+                        e.getPlayer().sendMessage(component);
+                    });
+                }
+
+
             } catch (Exception ex){
                 ex.printStackTrace();
             }
@@ -113,6 +136,26 @@ public class EventListener implements Listener {
     public void EntityShootBowEvent(EntityShootBowEvent e){
         if (e.getEntity() instanceof Player){
             System.out.println("！！");
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void DiscordonMessageReceivedEvent (DiscordonMessageReceivedEvent e){
+        MessageReceivedEvent event = e.getEvent();
+
+        if (event.isWebhookMessage() || event.getAuthor().isBot()){
+            return;
+        }
+
+        if (!event.getMessage().getTextChannel().getId().equals(plugin.getConfig().getString("NotificationChannel"))){
+            return;
+        }
+
+        for (Player player : plugin.getServer().getOnlinePlayers()){
+            player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+"新しいお知らせがあります。");
+            TextComponent component = new TextComponent("[確認する]");
+            component.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/noti"));
+            player.sendMessage(component);
         }
     }
 }

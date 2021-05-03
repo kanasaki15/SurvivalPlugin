@@ -29,3 +29,6 @@ commands:
   spawn:
     usage: '/spawn'
     description: ''
+  noti:
+    usage: '/noti'
+    description: ''

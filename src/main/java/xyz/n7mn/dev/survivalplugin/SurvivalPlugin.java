@@ -1,11 +1,22 @@
 package xyz.n7mn.dev.survivalplugin;
 
+import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.JDABuilder;
+import net.dv8tion.jda.api.entities.Activity;
+import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.requests.GatewayIntent;
+import net.dv8tion.jda.api.utils.MemberCachePolicy;
+import net.dv8tion.jda.api.utils.cache.CacheFlag;
+import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.WorldCreator;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
+import org.jetbrains.annotations.NotNull;
 import xyz.n7mn.dev.survivalplugin.command.*;
 import xyz.n7mn.dev.survivalplugin.data.PlayerLocationData;
+import xyz.n7mn.dev.survivalplugin.event.DiscordonMessageReceivedEvent;
 import xyz.n7mn.dev.survivalplugin.listener.EventListener;
 import xyz.n7mn.dev.survivalplugin.tab.PlayerTabList;
 import xyz.n7mn.dev.survivalplugin.tab.UserHomeList;
@@ -22,10 +33,30 @@ public final class SurvivalPlugin extends JavaPlugin {
     private List<PlayerLocationData> PlayerList = new ArrayList<>();
     private BukkitTask task = null;
 
+    private JDA jda = null;
+
     @Override
     public void onEnable() {
         // Plugin startup logic
         saveDefaultConfig();
+
+        try {
+            jda = JDABuilder.createLight(getConfig().getString("discordToken"), GatewayIntent.GUILD_MESSAGES, GatewayIntent.GUILD_MEMBERS, GatewayIntent.DIRECT_MESSAGES, GatewayIntent.GUILD_VOICE_STATES, GatewayIntent.GUILD_MESSAGE_REACTIONS, GatewayIntent.GUILD_PRESENCES, GatewayIntent.GUILD_EMOJIS)
+                    .addEventListeners(new ListenerAdapter() {
+                        @Override
+                        public void onMessageReceived(@NotNull MessageReceivedEvent event) {
+                            new Thread(()->{
+                                Bukkit.getServer().getPluginManager().callEvent(new DiscordonMessageReceivedEvent(event));
+                            }).start();
+                        }
+                    })
+                    .enableCache(CacheFlag.VOICE_STATE)
+                    .enableCache(CacheFlag.EMOTE)
+                    .setMemberCachePolicy(MemberCachePolicy.ALL)
+                    .build();
+        } catch (Exception e){
+            e.printStackTrace();
+        }
 
         getServer().createWorld(WorldCreator.name("sigen"));
         World sigen = getServer().getWorld("sigen");
@@ -44,8 +75,9 @@ public final class SurvivalPlugin extends JavaPlugin {
         getCommand("delhome").setExecutor(new DelHomeCommand(this));
         getCommand("delhome").setTabCompleter(new UserHomeList(this));
         getCommand("spawn").setExecutor(new SpawnCommand(this));
+        getCommand("noti").setExecutor(new NotificationCommand(this, jda));
 
-        getServer().getPluginManager().registerEvents(new EventListener(this, list), this);
+        getServer().getPluginManager().registerEvents(new EventListener(this, list, jda), this);
 
         getServer().getScheduler().runTaskTimerAsynchronously(this, new WorldReCreateTimer(this), 0L, 20L);
 
@@ -55,6 +87,10 @@ public final class SurvivalPlugin extends JavaPlugin {
     @Override
     public void onDisable() {
         // Plugin shutdown logic
+
+        if (jda != null){
+            jda.shutdownNow();
+        }
 
         for (PlayerLocationData data : PlayerList){
             data.getPlayer().teleport(data.getLocation());
