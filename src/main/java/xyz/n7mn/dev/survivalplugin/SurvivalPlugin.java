@@ -4,10 +4,7 @@ import org.bukkit.World;
 import org.bukkit.WorldCreator;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
-import xyz.n7mn.dev.survivalplugin.command.MainCommand;
-import xyz.n7mn.dev.survivalplugin.command.SetHomeCommand;
-import xyz.n7mn.dev.survivalplugin.command.SigenCommand;
-import xyz.n7mn.dev.survivalplugin.command.UserCommand;
+import xyz.n7mn.dev.survivalplugin.command.*;
 import xyz.n7mn.dev.survivalplugin.data.PlayerLocationData;
 import xyz.n7mn.dev.survivalplugin.listener.EventListener;
 import xyz.n7mn.dev.survivalplugin.tab.PlayerTabList;
@@ -39,7 +36,8 @@ public final class SurvivalPlugin extends JavaPlugin {
         getCommand("main").setExecutor(new MainCommand(PlayerList));
         getCommand("user").setExecutor(new UserCommand(this));
         getCommand("user").setTabCompleter(new PlayerTabList());
-        getCommand("sethome").setExecutor(new SetHomeCommand());
+        getCommand("sethome").setExecutor(new SetHomeCommand(this));
+        getCommand("home").setExecutor(new HomeCommand(this));
 
         getServer().getPluginManager().registerEvents(new EventListener(this, list), this);
 

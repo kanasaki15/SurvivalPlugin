@@ -47,41 +47,38 @@ public class HomeCommand implements CommandExecutor {
             return true;
         }
 
-        new Thread(()->{
-            try {
-                if (sender instanceof Player){
-                    Player player = (Player) sender;
+        try {
+            if (sender instanceof Player){
+                Player player = (Player) sender;
 
-                    if (!player.getLocation().getWorld().getName().equals("world")){
-                        sender.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+"通常のワールドに戻ってから実行してください。");
-                        return;
-                    }
+                if (!player.getLocation().getWorld().getName().equals("world")){
+                    sender.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+"通常のワールドに戻ってから実行してください。");
+                    return true;
+                }
 
-                    Connection con = DriverManager.getConnection("jdbc:mysql://" + plugin.getConfig().getString("mysqlServer") + ":" + plugin.getConfig().getInt("mysqlPort") + "/" + plugin.getConfig().getString("mysqlDatabase") + plugin.getConfig().getString("mysqlOption"), plugin.getConfig().getString("mysqlUsername"), plugin.getConfig().getString("mysqlPassword"));
-                    PreparedStatement statement = con.prepareStatement("SELECT * FROM HomeList WHERE MinecraftUser = ? AND Name = ?");
-                    statement.setString(1, player.getUniqueId().toString());
-                    statement.setString(2, args[0]);
-                    ResultSet set = statement.executeQuery();
-                    if (set.next()){
-                        player.teleport(new Location(player.getWorld(), set.getInt("x"), set.getInt("y"), set.getInt("z")));
-                        player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+args[0]+"へ移動しました。");
-                        set.close();
-                        statement.close();
-                        con.close();
-                        return;
-                    }
-
-                    player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+"指定の行き先が見つからないようです。");
+                Connection con = DriverManager.getConnection("jdbc:mysql://" + plugin.getConfig().getString("mysqlServer") + ":" + plugin.getConfig().getInt("mysqlPort") + "/" + plugin.getConfig().getString("mysqlDatabase") + plugin.getConfig().getString("mysqlOption"), plugin.getConfig().getString("mysqlUsername"), plugin.getConfig().getString("mysqlPassword"));
+                PreparedStatement statement = con.prepareStatement("SELECT * FROM HomeList WHERE MinecraftUser = ? AND Name = ?");
+                statement.setString(1, player.getUniqueId().toString());
+                statement.setString(2, args[0]);
+                ResultSet set = statement.executeQuery();
+                if (set.next()){
+                    player.teleport(new Location(player.getWorld(), set.getInt("x"), set.getInt("y"), set.getInt("z")));
+                    player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+args[0]+"へ移動しました。");
                     set.close();
                     statement.close();
                     con.close();
+                    return true;
                 }
 
-            } catch (SQLException e){
-                e.printStackTrace();
+                player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+"指定の行き先が見つからないようです。");
+                set.close();
+                statement.close();
+                con.close();
             }
 
-        }).start();
+        } catch (SQLException e){
+            e.printStackTrace();
+        }
 
         return true;
     }
