@@ -16,6 +16,7 @@ import xyz.n7mn.dev.survivalplugin.data.SurvivalUser;
 import java.sql.*;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.UUID;
@@ -57,13 +58,24 @@ public class UserCommand implements CommandExecutor {
                 PreparedStatement statement = con.prepareStatement("SELECT * FROM SurvivalUser");
                 ResultSet set = statement.executeQuery();
                 while (set.next()){
-                    userList.add(new SurvivalUser(
-                            UUID.fromString(set.getString("UUID")),
-                            set.getDate("FirstJoinDate"),
-                            set.getDate("LastJoinDate"),
-                            UUID.fromString(set.getString("RoleID")),
-                            set.getLong("Count")
-                    ));
+                    if (set.getString("RoleID").length() == 36){
+                        userList.add(new SurvivalUser(
+                                UUID.fromString(set.getString("UUID")),
+                                set.getDate("FirstJoinDate"),
+                                set.getDate("LastJoinDate"),
+                                UUID.fromString(set.getString("RoleID")),
+                                set.getLong("Count")
+                        ));
+                    } else {
+                        userList.add(new SurvivalUser(
+                                UUID.fromString(set.getString("UUID")),
+                                new Date(set.getTimestamp("FirstJoinDate").getTime()),
+                                new Date(set.getTimestamp("LastJoinDate").getTime()),
+                                null,
+                                set.getLong("Count")
+                        ));
+                    }
+
                 }
                 set.close();
                 statement.close();
