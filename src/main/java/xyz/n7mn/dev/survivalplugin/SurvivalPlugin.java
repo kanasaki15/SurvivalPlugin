@@ -43,6 +43,7 @@ public final class SurvivalPlugin extends JavaPlugin {
         getCommand("home").setTabCompleter(new UserHomeList(this));
         getCommand("delhome").setExecutor(new DelHomeCommand(this));
         getCommand("delhome").setTabCompleter(new UserHomeList(this));
+        getCommand("spawn").setExecutor(new SpawnCommand(this));
 
         getServer().getPluginManager().registerEvents(new EventListener(this, list), this);
 

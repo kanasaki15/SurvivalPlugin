@@ -26,3 +26,6 @@ commands:
   delhome:
     usage: '/delhome'
     description: ''
+  spawn:
+    usage: '/spawn'
+    description: ''
