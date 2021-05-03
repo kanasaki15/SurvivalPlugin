@@ -115,9 +115,13 @@ public class EventListener implements Listener {
 
                 channel.getHistoryAfter(1, 100).queue(messageHistory -> {
                     List<Message> list = messageHistory.getRetrievedHistory();
-                    net.kyori.adventure.text.TextComponent component = Component.text(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.UNDERLINE+list.size()+"件のおしらせ"+ChatColor.RESET+"があります。\n"+ChatColor.RESET+"※ お知らせは「/noti」で確認ができます。");
+                    TextComponent component = Component.text(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.UNDERLINE+list.size()+"件のおしらせ"+ChatColor.RESET+"があります。");
+
+                    TextComponent component1 = Component.text("[確認する]");
+                    component1 = component1.clickEvent(ClickEvent.clickEvent(ClickEvent.Action.RUN_COMMAND, "/noti"));
 
                     e.getPlayer().sendMessage(component);
+                    e.getPlayer().sendMessage(component1);
                 });
             }
         }).start();
@@ -146,7 +150,6 @@ public class EventListener implements Listener {
         }
         s = lati2hira(s);
 
-        String json = "{}";
         StringBuffer sb = new StringBuffer();
         try {
             OkHttpClient client = new OkHttpClient();
@@ -174,7 +177,7 @@ public class EventListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void DiscordonMessageReceivedEvent (DiscordonMessageReceivedEvent e){
-        MessageReceivedEvent event = e.getEvent();
+        MessageReceivedEvent event = e.getMessageReceivedEvent();
 
         if (event.isWebhookMessage() || event.getAuthor().isBot()){
             return;

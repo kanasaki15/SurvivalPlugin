@@ -3,7 +3,6 @@ package xyz.n7mn.dev.survivalplugin.event;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
-import org.jetbrains.annotations.NotNull;
 
 public class DiscordonMessageReceivedEvent extends Event {
 
@@ -14,7 +13,6 @@ public class DiscordonMessageReceivedEvent extends Event {
         this.event = e;
     }
 
-    @NotNull
     @Override
     public HandlerList getHandlers() {
         return handlerList;
@@ -24,7 +22,7 @@ public class DiscordonMessageReceivedEvent extends Event {
         return handlerList;
     }
 
-    public MessageReceivedEvent getEvent() {
+    public MessageReceivedEvent getMessageReceivedEvent() {
         return event;
     }
 }
