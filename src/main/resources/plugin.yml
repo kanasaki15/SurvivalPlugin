@@ -23,3 +23,6 @@ commands:
   home:
     usage: '/home'
     description: ''
+  delhome:
+    usage: '/delhome'
+    description: ''
