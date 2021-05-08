@@ -32,3 +32,12 @@ commands:
   noti:
     usage: '/noti'
     description: ''
+  lock:
+    usage: '/lock'
+    description: ''
+  unlock:
+    usage: '/unlock'
+    description: ''
+  locklist:
+    usage: '/locklist'
+    description: ''

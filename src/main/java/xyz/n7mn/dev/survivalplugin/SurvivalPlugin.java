@@ -9,6 +9,7 @@ import org.bukkit.World;
 import org.bukkit.WorldCreator;
 import org.bukkit.plugin.java.JavaPlugin;
 import xyz.n7mn.dev.survivalplugin.command.*;
+import xyz.n7mn.dev.survivalplugin.data.LockCommandUser;
 import xyz.n7mn.dev.survivalplugin.data.PlayerLocationData;
 import xyz.n7mn.dev.survivalplugin.listener.DiscordListner;
 import xyz.n7mn.dev.survivalplugin.listener.EventListener;
@@ -23,8 +24,9 @@ import java.util.UUID;
 public final class SurvivalPlugin extends JavaPlugin {
 
     private Boolean isMoveWorld = true;
-    private List<UUID> list = new ArrayList<>();
+    // private List<UUID> list = new ArrayList<>();
     private List<PlayerLocationData> PlayerList = new ArrayList<>();
+    private List<LockCommandUser> lockUserList = new ArrayList<>();
 
     private JDA jda = null;
 
@@ -46,7 +48,10 @@ public final class SurvivalPlugin extends JavaPlugin {
 
         getServer().createWorld(WorldCreator.name("sigen"));
         World sigen = getServer().getWorld("sigen");
-        sigen.setTime(getServer().getWorld("world").getTime());
+        World world = getServer().getWorld("world");
+        sigen.setTime(world.getTime());
+        sigen.setPVP(false);
+        world.setPVP(false);
 
         getLogger().info("資源ワールドの読み込みに成功しました。 seed : " + sigen.getSeed());
 
@@ -63,7 +68,7 @@ public final class SurvivalPlugin extends JavaPlugin {
         getCommand("spawn").setExecutor(new SpawnCommand(this));
         getCommand("noti").setExecutor(new NotificationCommand(this, jda));
 
-        getServer().getPluginManager().registerEvents(new EventListener(this, list, jda), this);
+        getServer().getPluginManager().registerEvents(new EventListener(this, jda, lockUserList), this);
 
         getServer().getScheduler().runTaskTimerAsynchronously(this, new WorldReCreateTimer(this), 0L, 20L);
 
