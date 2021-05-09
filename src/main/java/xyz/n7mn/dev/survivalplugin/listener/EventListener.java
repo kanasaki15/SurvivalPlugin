@@ -192,11 +192,42 @@ public class EventListener implements Listener {
                 }
             }
 
+            Location location = e.getInventory().getLocation();
             if (!isFound){
-                // TODO 保護されてるかどうかチェックしてされていたらその人かチェックして違ったらエラーメッセージを出す処理
-                Location location = e.getInventory().getLocation();
                 if (!(location.getBlock().getState() instanceof Chest)){
                     return;
+                }
+
+                try {
+                    Connection con = DriverManager.getConnection("jdbc:mysql://" + plugin.getConfig().getString("mysqlServer") + ":" + plugin.getConfig().getInt("mysqlPort") + "/" + plugin.getConfig().getString("mysqlDatabase") + plugin.getConfig().getString("mysqlOption"), plugin.getConfig().getString("mysqlUsername"), plugin.getConfig().getString("mysqlPassword"));
+                    PreparedStatement statement = con.prepareStatement("SELECT * FROM ChestLockList WHERE WorldUUID = ? AND x = ? AND y = ? AND z = ? AND Active = 1");
+                    statement.setString(1, location.getWorld().getUID().toString());
+                    statement.setInt(2, location.getBlockX());
+                    statement.setInt(3, location.getBlockY());
+                    statement.setInt(4, location.getBlockZ());
+                    ResultSet set = statement.executeQuery();
+                    if (set.next()){
+                        if (e.getPlayer().getUniqueId().equals(UUID.fromString(set.getString("LockUser")))){
+                            set.close();
+                            statement.close();
+                            con.close();
+                            return;
+                        }
+
+                        Bukkit.getScheduler().runTask(plugin, () -> {
+                            e.getView().close();
+                            e.getPlayer().closeInventory();
+                            e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+"他の人が保護しているチェストです。");
+                        });
+                        plugin.getLogger().info(e.getPlayer().getName() + "さんが"+set.getString("LockUsername")+"さんの保護されたチェストを開けようとしました。");
+
+                        set.close();
+                        statement.close();
+                        con.close();
+                        return;
+                    }
+                } catch (SQLException ex){
+                    ex.printStackTrace();
                 }
 
                 return;
@@ -208,9 +239,109 @@ public class EventListener implements Listener {
             });
 
             if (isAdd){
-                // TODO 保護追加処理
+                try {
+                    Connection con = DriverManager.getConnection("jdbc:mysql://" + plugin.getConfig().getString("mysqlServer") + ":" + plugin.getConfig().getInt("mysqlPort") + "/" + plugin.getConfig().getString("mysqlDatabase") + plugin.getConfig().getString("mysqlOption"), plugin.getConfig().getString("mysqlUsername"), plugin.getConfig().getString("mysqlPassword"));
+                    con.setAutoCommit(true);
+
+                    PreparedStatement statement = con.prepareStatement("SELECT * FROM ChestLockList WHERE WorldUUID = ? AND x = ? AND y = ? AND z = ? AND Active = 1");
+                    statement.setString(1, location.getWorld().getUID().toString());
+                    statement.setInt(2, location.getBlockX());
+                    statement.setInt(3, location.getBlockY());
+                    statement.setInt(4, location.getBlockZ());
+                    ResultSet set = statement.executeQuery();
+
+                    if (set.next()){
+                        Bukkit.getScheduler().runTask(plugin, () -> {
+                            e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+"すでに保護されているチェストです。");
+                        });
+
+                        set.close();
+                        statement.close();
+                        con.close();
+                        return;
+                    }
+
+                    set.close();
+                    statement.close();
+
+                    PreparedStatement statement2 = con.prepareStatement("INSERT INTO `ChestLockList`(`UUID`, `LockUser`, `LockUsername`, `WorldUUID`, `x`, `y`, `z`, `Active`) VALUES (?,?,?,?,?,?,?,?)");
+                    statement2.setString(1, UUID.randomUUID().toString());
+                    statement2.setString(2, e.getPlayer().getUniqueId().toString());
+                    statement2.setString(3, e.getPlayer().getName());
+                    statement2.setString(4, location.getWorld().getUID().toString());
+                    statement2.setInt(5, location.getBlockX());
+                    statement2.setInt(6, location.getBlockY());
+                    statement2.setInt(7, location.getBlockZ());
+                    statement2.setBoolean(8, true);
+                    statement2.execute();
+
+                    statement2.close();
+                    con.close();
+
+                    Bukkit.getScheduler().runTask(plugin, () -> {
+                        e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+"チェストを保護しました。");
+                    });
+                } catch (SQLException ex){
+                    ex.printStackTrace();
+                }
             } else {
-                // TODO 保護削除処理
+                try {
+                    Connection con = DriverManager.getConnection("jdbc:mysql://" + plugin.getConfig().getString("mysqlServer") + ":" + plugin.getConfig().getInt("mysqlPort") + "/" + plugin.getConfig().getString("mysqlDatabase") + plugin.getConfig().getString("mysqlOption"), plugin.getConfig().getString("mysqlUsername"), plugin.getConfig().getString("mysqlPassword"));
+                    con.setAutoCommit(true);
+
+                    PreparedStatement statement = con.prepareStatement("SELECT * FROM ChestLockList WHERE WorldUUID = ? AND x = ? AND y = ? AND z = ? AND Active = 1");
+                    statement.setString(1, location.getWorld().getUID().toString());
+                    statement.setInt(2, location.getBlockX());
+                    statement.setInt(3, location.getBlockY());
+                    statement.setInt(4, location.getBlockZ());
+                    ResultSet set = statement.executeQuery();
+
+                    String uuid;
+                    if (!set.next()){
+                        Bukkit.getScheduler().runTask(plugin, () -> {
+                            e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+"このチェストは保護されていません。");
+                        });
+
+                        set.close();
+                        statement.close();
+                        con.close();
+                        return;
+                    } else {
+                        uuid = set.getString("UUID");
+
+                        if (!e.getPlayer().getUniqueId().equals(UUID.fromString(uuid)) && !e.getPlayer().isOp()){
+                            Bukkit.getScheduler().runTask(plugin, () -> {
+                                e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+"他の人が保護したチェストは解除できません。");
+                            });
+
+                            set.close();
+                            statement.close();
+                            con.close();
+                            return;
+                        }
+
+                    }
+
+                    set.close();
+                    statement.close();
+
+                    PreparedStatement statement2 = con.prepareStatement("UPDATE `ChestLockList` SET `Active`= ? WHERE UUID = ?");
+                    statement2.setBoolean(1, false);
+                    statement2.setString(2, uuid);
+
+                    statement2.execute();
+
+                    statement2.close();
+                    con.close();
+
+                    Bukkit.getScheduler().runTask(plugin, () -> {
+                        e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+"チェストを保護解除しました。");
+                    });
+
+
+                } catch (SQLException ex){
+                    ex.printStackTrace();
+                }
             }
         }).start();
     }

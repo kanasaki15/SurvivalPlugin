@@ -57,16 +57,23 @@ public final class SurvivalPlugin extends JavaPlugin {
 
         getCommand("sigen").setExecutor(new SigenCommand(PlayerList, isMoveWorld));
         getCommand("main").setExecutor(new MainCommand(PlayerList));
+
         getCommand("user").setExecutor(new UserCommand(this));
         getCommand("user").setTabCompleter(new PlayerTabList());
+
         getCommand("sethome").setExecutor(new SetHomeCommand(this));
         getCommand("sethome").setTabCompleter(new UserHomeList(this));
         getCommand("home").setExecutor(new HomeCommand(this));
         getCommand("home").setTabCompleter(new UserHomeList(this));
         getCommand("delhome").setExecutor(new DelHomeCommand(this));
         getCommand("delhome").setTabCompleter(new UserHomeList(this));
+
         getCommand("spawn").setExecutor(new SpawnCommand(this));
+
         getCommand("noti").setExecutor(new NotificationCommand(this, jda));
+
+        getCommand("lock").setExecutor(new LockCommand(lockUserList));
+        getCommand("unlock").setExecutor(new UnLockCommand(lockUserList));
 
         getServer().getPluginManager().registerEvents(new EventListener(this, jda, lockUserList), this);
 
