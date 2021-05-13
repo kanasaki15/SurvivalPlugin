@@ -184,16 +184,31 @@ public class EventListener implements Listener {
             boolean isFound = false;
             boolean isAdd = false;
 
+            LockCommandUser u = null;
             for (LockCommandUser user : lockUserList){
                 if (e.getPlayer().getUniqueId().equals(user.getUserUUID())){
                     isAdd = user.isAdd();
                     isFound = true;
+                    u = user;
                     break;
                 }
             }
 
+            if (u != null){
+                lockUserList.remove(u);
+            }
+
             Location location = e.getInventory().getLocation();
             if (!isFound){
+
+                try {
+                    if (!(location.getBlock().getState() instanceof Chest)){
+                        return;
+                    }
+                } catch (Exception ex){
+                    return;
+                }
+
                 if (!(location.getBlock().getState() instanceof Chest)){
                     return;
                 }
