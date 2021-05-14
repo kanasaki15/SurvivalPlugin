@@ -19,10 +19,8 @@ import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
-import org.bukkit.block.BlockState;
 import org.bukkit.block.Chest;
 import org.bukkit.block.Sign;
-import org.bukkit.block.data.BlockData;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
@@ -47,6 +45,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.sql.*;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class EventListener implements Listener {
 
@@ -214,50 +213,50 @@ public class EventListener implements Listener {
             Location location = e.getInventory().getLocation();
             if (!isFound){
 
-                try {
-                    if (!(location.getBlock().getState() instanceof Chest)){
+                //plugin.getLogger().info("ぴ");
+
+
+                Bukkit.getScheduler().runTask(plugin, ()->{
+                    plugin.getLogger().info("え");
+                    if (location.getBlock().getType() != Material.CHEST){
                         return;
                     }
-                } catch (Exception ex){
-                    return;
-                }
 
-                if (!(location.getBlock().getState() instanceof Chest)){
-                    return;
-                }
+                    //plugin.getLogger().info("ん");
 
-                try {
-                    Connection con = DriverManager.getConnection("jdbc:mysql://" + plugin.getConfig().getString("mysqlServer") + ":" + plugin.getConfig().getInt("mysqlPort") + "/" + plugin.getConfig().getString("mysqlDatabase") + plugin.getConfig().getString("mysqlOption"), plugin.getConfig().getString("mysqlUsername"), plugin.getConfig().getString("mysqlPassword"));
-                    PreparedStatement statement = con.prepareStatement("SELECT * FROM ChestLockList WHERE WorldUUID = ? AND x = ? AND y = ? AND z = ? AND Active = 1");
-                    statement.setString(1, location.getWorld().getUID().toString());
-                    statement.setInt(2, location.getBlockX());
-                    statement.setInt(3, location.getBlockY());
-                    statement.setInt(4, location.getBlockZ());
-                    ResultSet set = statement.executeQuery();
-                    if (set.next()){
-                        if (e.getPlayer().getUniqueId().equals(UUID.fromString(set.getString("LockUser")))){
-                            set.close();
-                            statement.close();
-                            con.close();
-                            return;
-                        }
+                    try {
+                        //plugin.getLogger().info("。");
+                        Connection con = DriverManager.getConnection("jdbc:mysql://" + plugin.getConfig().getString("mysqlServer") + ":" + plugin.getConfig().getInt("mysqlPort") + "/" + plugin.getConfig().getString("mysqlDatabase") + plugin.getConfig().getString("mysqlOption"), plugin.getConfig().getString("mysqlUsername"), plugin.getConfig().getString("mysqlPassword"));
+                        PreparedStatement statement = con.prepareStatement("SELECT * FROM ChestLockList WHERE WorldUUID = ? AND x = ? AND y = ? AND z = ? AND Active = 1");
+                        statement.setString(1, location.getWorld().getUID().toString());
+                        statement.setInt(2, location.getBlockX());
+                        statement.setInt(3, location.getBlockY());
+                        statement.setInt(4, location.getBlockZ());
+                        ResultSet set = statement.executeQuery();
+                        if (set.next()){
+                            plugin.getLogger().info(e.getPlayer().getUniqueId().toString());
+                            plugin.getLogger().info(set.getString("LockUser"));
+                            if (e.getPlayer().getUniqueId().equals(UUID.fromString(set.getString("LockUser")))){
+                                set.close();
+                                statement.close();
+                                con.close();
+                                return;
+                            }
 
-                        Bukkit.getScheduler().runTask(plugin, () -> {
                             e.getView().close();
                             e.getPlayer().closeInventory();
                             e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+"他の人が保護しているチェストです。");
-                        });
-                        plugin.getLogger().info(e.getPlayer().getName() + "さんが"+set.getString("LockUsername")+"さんの保護されたチェストを開けようとしました。");
 
-                        set.close();
-                        statement.close();
-                        con.close();
-                        return;
+                            plugin.getLogger().info(e.getPlayer().getName() + "さんが"+set.getString("LockUsername")+"さんの保護されたチェストを開けようとしました。");
+
+                            set.close();
+                            statement.close();
+                            con.close();
+                        }
+                    } catch (SQLException ex){
+                        ex.printStackTrace();
                     }
-                } catch (SQLException ex){
-                    ex.printStackTrace();
-                }
-
+                });
                 return;
             }
 
