@@ -11,27 +11,35 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.ClickEvent;
-import net.md_5.bungee.api.chat.BaseComponent;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.block.Block;
+import org.bukkit.block.BlockState;
 import org.bukkit.block.Chest;
+import org.bukkit.block.Sign;
+import org.bukkit.block.data.BlockData;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
-import org.bukkit.scheduler.BukkitRunnable;
 import xyz.n7mn.dev.survivalplugin.data.LockCommandUser;
 import xyz.n7mn.dev.survivalplugin.event.DiscordonMessageReceivedEvent;
 import xyz.n7mn.dev.survivalplugin.function.Lati2Hira;
 
+import java.io.File;
+import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.sql.*;
@@ -175,8 +183,8 @@ public class EventListener implements Listener {
             ex.printStackTrace();
         }
 
-        e.message(Component.text(sb.toString() + " ("+m.content()+")"));
 
+        e.message(Component.text(sb.toString() + " ("+m.content()+")"));
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
@@ -364,7 +372,7 @@ public class EventListener implements Listener {
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
-    public void DiscordonMessageReceivedEvent (DiscordonMessageReceivedEvent e){
+    public void DiscordOnMessageReceivedEvent (DiscordonMessageReceivedEvent e){
         MessageReceivedEvent event = e.getMessageReceivedEvent();
 
         if (event.isWebhookMessage() || event.getAuthor().isBot()){
@@ -372,7 +380,6 @@ public class EventListener implements Listener {
         }
 
         if (event.getMessage().getTextChannel().getId().equals(plugin.getConfig().getString("NotificationChannel"))){
-
             for (Player player : plugin.getServer().getOnlinePlayers()){
                 player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+"新しいお知らせがあります。");
                 TextComponent component = Component.text("[確認する]");
@@ -384,25 +391,74 @@ public class EventListener implements Listener {
         }
 
         if (event.getMessage().getTextChannel().getId().equals(plugin.getConfig().getString("ChatChannel"))){
+            String discordName = event.getAuthor().getName();
+            if (event.getMessage().getMember().getNickname() != null){
+                discordName = event.getMessage().getMember().getNickname();
+            }
 
-            new BukkitRunnable() {
-                @Override
-                public void run() {
-
-                    String discordName = event.getAuthor().getName();
-                    if (event.getMessage().getMember().getNickname() != null){
-                        discordName = event.getMessage().getMember().getNickname();
-                    }
-
-                    String text = ChatColor.AQUA + "[Discord] "+ discordName + " " + ChatColor.RESET + e.getMessageReceivedEvent().getMessage().getContentDisplay();
-                    plugin.getLogger().info(text);
-                    for (Player player : plugin.getServer().getOnlinePlayers()){
-                        player.sendMessage(text);
-                    }
-                }
-            }.runTaskAsynchronously(plugin);
-
+            String text = ChatColor.AQUA + "[Discord] "+ discordName + " " + ChatColor.RESET + e.getMessageReceivedEvent().getMessage().getContentDisplay();
+            plugin.getLogger().info(text);
+            for (Player player : plugin.getServer().getOnlinePlayers()){
+                player.sendMessage(text);
+            }
         }
     }
 
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void PlayerDeathEvent(PlayerDeathEvent e){
+        e.setDroppedExp(0);
+
+        Player player = e.getEntity();
+        int size = player.getInventory().getSize();
+        String fileName = player.getUniqueId().toString() + "_" + player.getLocation().getWorld().getName() + "_" + player.getLocation().getBlockX() + "_" + player.getLocation().getBlockY() + "_" + player.getLocation().getBlockZ() + ".yml";
+        // plugin.getLogger().info("生成チェック : " + plugin.getDataFolder().getPath().replaceAll("\\\\","/") + "/d/" + fileName);
+        File file1 = new File("./" + plugin.getDataFolder().getPath().replaceAll("\\\\","/") + "/d/");
+        if (!file1.exists()){
+            file1.mkdir();
+        }
+
+        try {
+            File file = new File("./" + plugin.getDataFolder().getPath().replaceAll("\\\\","/") + "/d/" + fileName);
+            file.createNewFile();
+
+            YamlConfiguration config = new YamlConfiguration();
+
+            if (player.getLocation().getBlock().getType() != Material.AIR){
+                config.set("oldBlock", player.getLocation().getBlock());
+            }
+
+            player.getLocation().getBlock().setType(Material.BIRCH_SIGN);
+
+            Block block = player.getLocation().getBlock();
+
+            Sign sign = (Sign) block.getState();
+            sign.line(0, Component.text("[死体]"));
+            sign.line(1, Component.text(player.getName()));
+            sign.update();
+
+            for (int i = 0; i < size; i++){
+                if (player.getInventory().getItem(i) == null){
+                    continue;
+                }
+                config.set("block"+i, player.getInventory().getItem(i));
+                player.getInventory().clear(i);
+            }
+            config.save(file);
+
+
+            plugin.getLogger().info("生成チェック : " + plugin.getDataFolder().getPath().replaceAll("\\\\","/") + "/d/" + fileName);
+            for (Player onPlayer : Bukkit.getServer().getOnlinePlayers()){
+                onPlayer.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + e.deathMessage());
+            }
+
+            player.sendMessage(ChatColor.YELLOW+"[ななみ生活鯖] "+ChatColor.RESET+"以下の場所に墓を生成しました！\nX: "+player.getLocation().getBlockX()+" Y:"+player.getLocation().getBlockY()+" Z: "+player.getLocation().getBlockZ());
+        } catch (IOException ex){
+            ex.printStackTrace();
+        }
+
+
+        player.spigot().respawn();
+        e.setCancelled(true);
+
+    }
 }
