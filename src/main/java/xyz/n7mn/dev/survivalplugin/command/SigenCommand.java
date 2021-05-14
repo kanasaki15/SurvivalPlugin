@@ -29,6 +29,11 @@ public class SigenCommand implements CommandExecutor {
 
             Player player = (Player) sender;
 
+            if (player.getLocation().getWorld().getName().equals("sigen")){
+                player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "今いるワールドは資源ワールドです！！");
+                return true;
+            }
+
             if (isMoveWorld){
                 locationDataList.add(new PlayerLocationData(player, player.getLocation()));
                 Location location = Bukkit.getWorld("sigen").getSpawnLocation();
