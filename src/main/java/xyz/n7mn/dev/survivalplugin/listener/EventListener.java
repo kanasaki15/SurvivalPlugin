@@ -11,6 +11,7 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.ClickEvent;
+import net.md_5.bungee.api.chat.BaseComponent;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -26,6 +27,7 @@ import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.Plugin;
+import org.bukkit.scheduler.BukkitRunnable;
 import xyz.n7mn.dev.survivalplugin.data.LockCommandUser;
 import xyz.n7mn.dev.survivalplugin.event.DiscordonMessageReceivedEvent;
 import xyz.n7mn.dev.survivalplugin.function.Lati2Hira;
@@ -369,15 +371,37 @@ public class EventListener implements Listener {
             return;
         }
 
-        if (!event.getMessage().getTextChannel().getId().equals(plugin.getConfig().getString("NotificationChannel"))){
+        if (event.getMessage().getTextChannel().getId().equals(plugin.getConfig().getString("NotificationChannel"))){
+
+            for (Player player : plugin.getServer().getOnlinePlayers()){
+                player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+"新しいお知らせがあります。");
+                TextComponent component = Component.text("[確認する]");
+                component = component.clickEvent(ClickEvent.clickEvent(ClickEvent.Action.RUN_COMMAND, "/noti"));
+                player.sendMessage(component);
+            }
+
             return;
         }
 
-        for (Player player : plugin.getServer().getOnlinePlayers()){
-            player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+"新しいお知らせがあります。");
-            TextComponent component = Component.text("[確認する]");
-            component = component.clickEvent(ClickEvent.clickEvent(ClickEvent.Action.RUN_COMMAND, "/noti"));
-            player.sendMessage(component);
+        if (event.getMessage().getTextChannel().getId().equals(plugin.getConfig().getString("ChatChannel"))){
+
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+
+                    String discordName = event.getAuthor().getName();
+                    if (event.getMessage().getMember().getNickname() != null){
+                        discordName = event.getMessage().getMember().getNickname();
+                    }
+
+                    String text = ChatColor.AQUA + "[Discord] "+ discordName + " " + ChatColor.RESET + e.getMessageReceivedEvent().getMessage().getContentDisplay();
+                    plugin.getLogger().info(text);
+                    for (Player player : plugin.getServer().getOnlinePlayers()){
+                        player.sendMessage(text);
+                    }
+                }
+            }.runTaskAsynchronously(plugin);
+
         }
     }
 

@@ -8,3 +8,4 @@ mysqlOption: '?allowPublicKeyRetrieval=true&useSSL=false'
 discordToken: ''
 
 NotificationChannel: '838583904456802334'
+ChatChannel: '842615153728290836'
