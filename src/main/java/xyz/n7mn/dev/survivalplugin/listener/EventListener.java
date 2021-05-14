@@ -23,13 +23,16 @@ import org.bukkit.block.BlockState;
 import org.bukkit.block.Chest;
 import org.bukkit.block.Sign;
 import org.bukkit.block.data.BlockData;
+import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
@@ -424,7 +427,7 @@ public class EventListener implements Listener {
             YamlConfiguration config = new YamlConfiguration();
 
             if (player.getLocation().getBlock().getType() != Material.AIR){
-                config.set("oldBlock", player.getLocation().getBlock());
+                config.set("oldBlockType", player.getLocation().getBlock().getType().name());
             }
 
             player.getLocation().getBlock().setType(Material.BIRCH_SIGN);
@@ -448,7 +451,7 @@ public class EventListener implements Listener {
 
             plugin.getLogger().info("生成チェック : " + plugin.getDataFolder().getPath().replaceAll("\\\\","/") + "/d/" + fileName);
             for (Player onPlayer : Bukkit.getServer().getOnlinePlayers()){
-                onPlayer.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + e.deathMessage());
+                onPlayer.sendMessage(e.deathMessage());
             }
 
             player.sendMessage(ChatColor.YELLOW+"[ななみ生活鯖] "+ChatColor.RESET+"以下の場所に墓を生成しました！\nX: "+player.getLocation().getBlockX()+" Y:"+player.getLocation().getBlockY()+" Z: "+player.getLocation().getBlockZ());
@@ -460,5 +463,54 @@ public class EventListener implements Listener {
         player.spigot().respawn();
         e.setCancelled(true);
 
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void PlayerInteractEvent (PlayerInteractEvent e){
+        if (e.getAction() != Action.RIGHT_CLICK_BLOCK){
+            return;
+        }
+
+        Block block = e.getClickedBlock();
+        if (block != null && block.getState() instanceof Sign){
+            Location location = block.getLocation();
+
+            if (!new File("./" + plugin.getDataFolder().getPath().replaceAll("\\\\", "/") + "/d/").exists()){
+                return;
+            }
+
+            String fileName = e.getPlayer().getUniqueId().toString() + "_" + location.getWorld().getName() + "_" + location.getBlockX() + "_" + location.getBlockY() + "_" + location.getBlockZ() + ".yml";
+            File file = new File("./" + plugin.getDataFolder().getPath().replaceAll("\\\\", "/") + "/d/" + fileName);
+            if (!file.exists()){
+                return;
+            }
+
+            YamlConfiguration config = new YamlConfiguration();
+            try {
+                config.load(file);
+
+                Material oldBlockType = null;
+                if (config.isSet("oldBlockType")){
+                    oldBlockType = Material.getMaterial(config.getString("oldBlockType"));
+                }
+                if (oldBlockType != null){
+                    location.getBlock().setType(oldBlockType);
+                } else {
+                    location.getBlock().setType(Material.AIR);
+                }
+
+                for (int i = 0; i < e.getPlayer().getInventory().getSize(); i++){
+                    ItemStack stack = config.getItemStack("block" + i);
+                    if (stack != null){
+                        e.getPlayer().getInventory().addItem(stack);
+                    }
+                }
+
+                e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "アイテムを復活しました！");
+                e.setCancelled(true);
+            } catch (IOException | InvalidConfigurationException ex) {
+                ex.printStackTrace();
+            }
+        }
     }
 }
