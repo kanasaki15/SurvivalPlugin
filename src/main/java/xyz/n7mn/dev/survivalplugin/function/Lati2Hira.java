@@ -142,6 +142,11 @@ public class Lati2Hira {
         list.add(new Moji("pyu", "ぴゅ"));
         list.add(new Moji("pye", "ぴぇ"));
         list.add(new Moji("pyo", "ぴょ"));
+        list.add(new Moji("rya", "りゃ"));
+        list.add(new Moji("ryi", "りぃ"));
+        list.add(new Moji("ryu", "りゅ"));
+        list.add(new Moji("rye", "りぇ"));
+        list.add(new Moji("ryo", "りょ"));
         list.add(new Moji("lya", "ゃ"));
         list.add(new Moji("lyi", "ぃ"));
         list.add(new Moji("lyu", "ゅ"));
