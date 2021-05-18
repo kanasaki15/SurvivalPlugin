@@ -29,9 +29,11 @@ public class WorldReCreateTimer implements Runnable {
         int week = instance.get(DAY_OF_WEEK);
         int hour = instance.get(HOUR);
         int minute = instance.get(MINUTE);
+        int second = instance.get(SECOND);
+
         int ap = instance.get(AM_PM);
 
-        if (ap == 1 && hour == 1 && week == 7){
+        if (ap == 1 && hour == 1 && week == 7 && second == 0){
             String text = "";
             if (minute == 50){
                 text = "あと10分で資源ワールドを再生成します。 貴重品はメインワールドに持ち帰ってください。";
@@ -48,13 +50,17 @@ public class WorldReCreateTimer implements Runnable {
                 plugin.getLogger().info("定期リセット処理 1分前");
             }
 
+            if (text.length() == 0){
+                return;
+            }
+
             for (Player player : plugin.getServer().getOnlinePlayers()){
                 player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + text);
             }
             return;
         }
 
-        if (ap == 1 && hour == 2 && week == 7){
+        if (ap == 1 && hour == 2 && minute == 0 && second == 0 && week == 7){
             WorldReCreate.run(plugin);
         }
 

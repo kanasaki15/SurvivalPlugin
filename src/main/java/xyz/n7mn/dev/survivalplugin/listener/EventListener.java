@@ -19,7 +19,6 @@ import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
-import org.bukkit.block.Chest;
 import org.bukkit.block.Sign;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -45,7 +44,6 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.sql.*;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public class EventListener implements Listener {
 
@@ -134,8 +132,8 @@ public class EventListener implements Listener {
                     TextComponent component1 = Component.text("[確認する]");
                     component1 = component1.clickEvent(ClickEvent.clickEvent(ClickEvent.Action.RUN_COMMAND, "/noti"));
 
-                    e.getPlayer().sendMessage(component);
-                    e.getPlayer().sendMessage(component1);
+                    //e.getPlayer().sendMessage(component);
+                    //e.getPlayer().sendMessage(component1);
                 });
             }
         }).start();
@@ -217,7 +215,7 @@ public class EventListener implements Listener {
 
 
                 Bukkit.getScheduler().runTask(plugin, ()->{
-                    plugin.getLogger().info("え");
+                    //plugin.getLogger().info("え");
                     if (location.getBlock().getType() != Material.CHEST){
                         return;
                     }
@@ -234,7 +232,7 @@ public class EventListener implements Listener {
                         statement.setInt(4, location.getBlockZ());
                         ResultSet set = statement.executeQuery();
                         if (set.next()){
-                            plugin.getLogger().info(e.getPlayer().getUniqueId().toString());
+                            //plugin.getLogger().info(e.getPlayer().getUniqueId().toString());
                             plugin.getLogger().info(set.getString("LockUser"));
                             if (e.getPlayer().getUniqueId().equals(UUID.fromString(set.getString("LockUser")))){
                                 set.close();
@@ -466,10 +464,6 @@ public class EventListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void PlayerInteractEvent (PlayerInteractEvent e){
-        if (e.getAction() != Action.RIGHT_CLICK_BLOCK){
-            return;
-        }
-
         Block block = e.getClickedBlock();
         if (block != null && block.getState() instanceof Sign){
             Location location = block.getLocation();
@@ -493,9 +487,13 @@ public class EventListener implements Listener {
                     oldBlockType = Material.getMaterial(config.getString("oldBlockType"));
                 }
                 if (oldBlockType != null){
-                    location.getBlock().setType(oldBlockType);
+                    // location.getBlock().setType(oldBlockType);
+                    Block blockAt = Bukkit.getServer().getWorld(location.getWorld().getUID()).getBlockAt(location);
+                    blockAt.setType(oldBlockType);
+
                 } else {
-                    location.getBlock().setType(Material.AIR);
+                    Block blockAt = Bukkit.getServer().getWorld(location.getWorld().getUID()).getBlockAt(location);
+                    blockAt.setType(Material.AIR);
                 }
 
                 for (int i = 0; i < e.getPlayer().getInventory().getSize(); i++){
@@ -504,6 +502,10 @@ public class EventListener implements Listener {
                         e.getPlayer().getInventory().addItem(stack);
                     }
                 }
+                
+
+                File file2 = new File("./" + plugin.getDataFolder().getPath().replaceAll("\\\\", "/") + "/d/" + fileName);
+                file2.delete();
 
                 e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "アイテムを復活しました！");
                 e.setCancelled(true);
