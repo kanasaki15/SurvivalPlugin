@@ -17,31 +17,30 @@ import okhttp3.Response;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.block.Block;
-import org.bukkit.block.Sign;
-import org.bukkit.configuration.InvalidConfigurationException;
-import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.block.BlockState;
+import org.bukkit.block.Chest;
+import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
+import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
-import org.bukkit.inventory.ItemStack;
+import org.bukkit.metadata.FixedMetadataValue;
+import org.bukkit.metadata.MetadataValue;
+import org.bukkit.metadata.MetadataValueAdapter;
 import org.bukkit.plugin.Plugin;
 import xyz.n7mn.dev.survivalplugin.data.LockCommandUser;
 import xyz.n7mn.dev.survivalplugin.event.DiscordonMessageReceivedEvent;
 import xyz.n7mn.dev.survivalplugin.function.Lati2Hira;
 
-import java.io.File;
-import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
 import java.sql.*;
 import java.util.*;
 
@@ -189,186 +188,133 @@ public class EventListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void InventoryOpenEvent(InventoryOpenEvent e){
-        new Thread(()->{
 
-            boolean isFound = false;
-            boolean isAdd = false;
+        if (e.getInventory().getType() != InventoryType.CHEST){
+            return;
+        }
 
-            LockCommandUser u = null;
-            for (LockCommandUser user : lockUserList){
-                if (e.getPlayer().getUniqueId().equals(user.getUserUUID())){
-                    isAdd = user.isAdd();
-                    isFound = true;
-                    u = user;
-                    break;
-                }
+        boolean isFound = false;
+        boolean isAdd = false;
+
+        LockCommandUser u = null;
+        for (LockCommandUser user : lockUserList){
+            if (e.getPlayer().getUniqueId().equals(user.getUserUUID())){
+                isAdd = user.isAdd();
+                isFound = true;
+                u = user;
+                break;
             }
+        }
 
-            if (u != null){
-                lockUserList.remove(u);
-            }
+        lockUserList.remove(u);
 
-            Location location = e.getInventory().getLocation();
-            if (!isFound){
+        Location location = e.getInventory().getLocation();
+        Chest chest = (Chest) location.getBlock().getState();
 
-                //plugin.getLogger().info("ぴ");
+        UUID chestID;
+        if (!chest.hasMetadata("uuid")){
+            chestID = UUID.randomUUID();
+            chest.setMetadata("uuid", new FixedMetadataValue(plugin, chestID.toString()));
+            chest.update(true);
+        } else {
+            chestID = UUID.fromString((String) chest.getMetadata("uuid").get(0).value());
+        }
+
+        if (isFound){
+            e.getView().close();
+            e.getPlayer().closeInventory();
+            e.setCancelled(true);
+
+            // ロック追加 or 解除処理
+            try {
+                Connection con = DriverManager.getConnection("jdbc:mysql://" + plugin.getConfig().getString("mysqlServer") + ":" + plugin.getConfig().getInt("mysqlPort") + "/" + plugin.getConfig().getString("mysqlDatabase") + plugin.getConfig().getString("mysqlOption"), plugin.getConfig().getString("mysqlUsername"), plugin.getConfig().getString("mysqlPassword"));
+
+                PreparedStatement statement = con.prepareStatement("SELECT * FROM LockList WHERE BlockID = ?");
+                statement.setString(1, chestID.toString());
+                ResultSet set = statement.executeQuery();
 
 
-                Bukkit.getScheduler().runTask(plugin, ()->{
-                    //plugin.getLogger().info("え");
-                    if (location.getBlock().getType() != Material.CHEST){
+                if (isAdd){
+                    // 追加
+                    UUID addUser = u.getAddUser();
+                    UUID userUUID = u.getUserUUID();
+
+                    boolean check = false;
+                    boolean isParent = false;
+                    boolean isAddCheck = true;
+                    while (set.next()){
+                        check = true;
+                        if (userUUID.toString().equals(set.getString("MinecraftUserID"))){
+                            isParent = set.getBoolean("IsParent");
+                            break;
+                        }
+
+                        if (addUser != null && addUser.toString().equals(set.getString("MinecraftUserID"))){
+                            isAddCheck = false;
+                        }
+                    }
+
+                    set.close();
+                    statement.close();
+
+                    // System.out.println("check " + check);
+                    // System.out.println("isParent" + isParent);
+                    if (check && !isParent && addUser != null){
+                        e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "保護を追加した人しか保護追加できません。");
+                        con.close();
                         return;
                     }
 
-                    //plugin.getLogger().info("ん");
+                    if (check && addUser == null){
+                        e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "すでに登録されています。");
+                        con.close();
+                        return;
+                    }
 
-                    try {
-                        //plugin.getLogger().info("。");
-                        Connection con = DriverManager.getConnection("jdbc:mysql://" + plugin.getConfig().getString("mysqlServer") + ":" + plugin.getConfig().getInt("mysqlPort") + "/" + plugin.getConfig().getString("mysqlDatabase") + plugin.getConfig().getString("mysqlOption"), plugin.getConfig().getString("mysqlUsername"), plugin.getConfig().getString("mysqlPassword"));
-                        PreparedStatement statement = con.prepareStatement("SELECT * FROM ChestLockList WHERE WorldUUID = ? AND x = ? AND y = ? AND z = ? AND Active = 1");
-                        statement.setString(1, location.getWorld().getUID().toString());
-                        statement.setInt(2, location.getBlockX());
-                        statement.setInt(3, location.getBlockY());
-                        statement.setInt(4, location.getBlockZ());
-                        ResultSet set = statement.executeQuery();
-                        if (set.next()){
-                            //plugin.getLogger().info(e.getPlayer().getUniqueId().toString());
-                            plugin.getLogger().info(set.getString("LockUser"));
-                            if (e.getPlayer().getUniqueId().equals(UUID.fromString(set.getString("LockUser")))){
-                                set.close();
-                                statement.close();
-                                con.close();
-                                return;
+                    if (check && !isAddCheck){
+                        e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "すでに登録されています。");
+                        con.close();
+                        return;
+                    }
+
+                    new Thread(()->{
+                        try {
+                            PreparedStatement statement1 = con.prepareStatement("INSERT INTO `LockList`(`UUID`, `BlockID`, `BlockType`, `MinecraftUserID`, `IsParent`, `Active`) VALUES (?,?,?,?,?,?)");
+                            statement1.setString(1, UUID.randomUUID().toString());
+                            statement1.setString(2, chestID.toString());
+                            statement1.setString(3, chest.getType().name());
+                            if (addUser == null){
+                                statement1.setString(4, userUUID.toString());
+                                statement1.setBoolean(5, true);
+                            } else {
+                                statement1.setString(4, addUser.toString());
+                                statement1.setBoolean(5, false);
                             }
-
-                            e.getView().close();
-                            e.getPlayer().closeInventory();
-                            e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+"他の人が保護しているチェストです。");
-
-                            plugin.getLogger().info(e.getPlayer().getName() + "さんが"+set.getString("LockUsername")+"さんの保護されたチェストを開けようとしました。");
-
-                            set.close();
-                            statement.close();
+                            statement1.setBoolean(6, true);
+                            statement1.execute();
+                            statement1.close();
                             con.close();
+                        } catch (SQLException ex){
+                            ex.printStackTrace();
                         }
-                    } catch (SQLException ex){
-                        ex.printStackTrace();
-                    }
-                });
-                return;
-            }
 
-            Bukkit.getScheduler().runTask(plugin, () -> {
-                e.getView().close();
-                e.getPlayer().closeInventory();
-            });
+                    }).start();
 
-            if (isAdd){
-                try {
-                    Connection con = DriverManager.getConnection("jdbc:mysql://" + plugin.getConfig().getString("mysqlServer") + ":" + plugin.getConfig().getInt("mysqlPort") + "/" + plugin.getConfig().getString("mysqlDatabase") + plugin.getConfig().getString("mysqlOption"), plugin.getConfig().getString("mysqlUsername"), plugin.getConfig().getString("mysqlPassword"));
-                    con.setAutoCommit(true);
-
-                    PreparedStatement statement = con.prepareStatement("SELECT * FROM ChestLockList WHERE WorldUUID = ? AND x = ? AND y = ? AND z = ? AND Active = 1");
-                    statement.setString(1, location.getWorld().getUID().toString());
-                    statement.setInt(2, location.getBlockX());
-                    statement.setInt(3, location.getBlockY());
-                    statement.setInt(4, location.getBlockZ());
-                    ResultSet set = statement.executeQuery();
-
-                    if (set.next()){
-                        Bukkit.getScheduler().runTask(plugin, () -> {
-                            e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+"すでに保護されているチェストです。");
-                        });
-
-                        set.close();
-                        statement.close();
-                        con.close();
-                        return;
-                    }
-
-                    set.close();
-                    statement.close();
-
-                    PreparedStatement statement2 = con.prepareStatement("INSERT INTO `ChestLockList`(`UUID`, `LockUser`, `LockUsername`, `WorldUUID`, `x`, `y`, `z`, `Active`) VALUES (?,?,?,?,?,?,?,?)");
-                    statement2.setString(1, UUID.randomUUID().toString());
-                    statement2.setString(2, e.getPlayer().getUniqueId().toString());
-                    statement2.setString(3, e.getPlayer().getName());
-                    statement2.setString(4, location.getWorld().getUID().toString());
-                    statement2.setInt(5, location.getBlockX());
-                    statement2.setInt(6, location.getBlockY());
-                    statement2.setInt(7, location.getBlockZ());
-                    statement2.setBoolean(8, true);
-                    statement2.execute();
-
-                    statement2.close();
-                    con.close();
-
-                    Bukkit.getScheduler().runTask(plugin, () -> {
-                        e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+"チェストを保護しました。");
-                    });
-                } catch (SQLException ex){
-                    ex.printStackTrace();
-                }
-            } else {
-                try {
-                    Connection con = DriverManager.getConnection("jdbc:mysql://" + plugin.getConfig().getString("mysqlServer") + ":" + plugin.getConfig().getInt("mysqlPort") + "/" + plugin.getConfig().getString("mysqlDatabase") + plugin.getConfig().getString("mysqlOption"), plugin.getConfig().getString("mysqlUsername"), plugin.getConfig().getString("mysqlPassword"));
-                    con.setAutoCommit(true);
-
-                    PreparedStatement statement = con.prepareStatement("SELECT * FROM ChestLockList WHERE WorldUUID = ? AND x = ? AND y = ? AND z = ? AND Active = 1");
-                    statement.setString(1, location.getWorld().getUID().toString());
-                    statement.setInt(2, location.getBlockX());
-                    statement.setInt(3, location.getBlockY());
-                    statement.setInt(4, location.getBlockZ());
-                    ResultSet set = statement.executeQuery();
-
-                    String uuid;
-                    if (!set.next()){
-                        Bukkit.getScheduler().runTask(plugin, () -> {
-                            e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+"このチェストは保護されていません。");
-                        });
-
-                        set.close();
-                        statement.close();
-                        con.close();
-                        return;
+                    if (addUser != null){
+                        e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "保護チェストに追加登録が完了しました。");
                     } else {
-                        uuid = set.getString("UUID");
-
-                        if (!e.getPlayer().getUniqueId().equals(UUID.fromString(uuid)) && !e.getPlayer().isOp()){
-                            Bukkit.getScheduler().runTask(plugin, () -> {
-                                e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+"他の人が保護したチェストは解除できません。");
-                            });
-
-                            set.close();
-                            statement.close();
-                            con.close();
-                            return;
-                        }
-
+                        e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "チェストを保護しました。");
                     }
 
-                    set.close();
-                    statement.close();
-
-                    PreparedStatement statement2 = con.prepareStatement("UPDATE `ChestLockList` SET `Active`= ? WHERE UUID = ?");
-                    statement2.setBoolean(1, false);
-                    statement2.setString(2, uuid);
-
-                    statement2.execute();
-
-                    statement2.close();
-                    con.close();
-
-                    Bukkit.getScheduler().runTask(plugin, () -> {
-                        e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+"チェストを保護解除しました。");
-                    });
-
-
-                } catch (SQLException ex){
-                    ex.printStackTrace();
+                    return;
                 }
+                // 削除
+            } catch (SQLException ex){
+                ex.printStackTrace();
             }
-        }).start();
+
+        }
+
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
@@ -406,112 +352,11 @@ public class EventListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void PlayerDeathEvent(PlayerDeathEvent e){
-        e.setDroppedExp(0);
-
-        Player player = e.getEntity();
-        int size = player.getInventory().getSize();
-        String fileName = player.getUniqueId().toString() + "_" + player.getLocation().getWorld().getName() + "_" + player.getLocation().getBlockX() + "_" + player.getLocation().getBlockY() + "_" + player.getLocation().getBlockZ() + ".yml";
-        // plugin.getLogger().info("生成チェック : " + plugin.getDataFolder().getPath().replaceAll("\\\\","/") + "/d/" + fileName);
-        File file1 = new File("./" + plugin.getDataFolder().getPath().replaceAll("\\\\","/") + "/d/");
-        if (!file1.exists()){
-            file1.mkdir();
-        }
-
-        try {
-            File file = new File("./" + plugin.getDataFolder().getPath().replaceAll("\\\\","/") + "/d/" + fileName);
-            file.createNewFile();
-
-            YamlConfiguration config = new YamlConfiguration();
-
-            if (player.getLocation().getBlock().getType() != Material.AIR){
-                config.set("oldBlockType", player.getLocation().getBlock().getType().name());
-            }
-
-            player.getLocation().getBlock().setType(Material.BIRCH_SIGN);
-
-            Block block = player.getLocation().getBlock();
-
-            Sign sign = (Sign) block.getState();
-            sign.line(0, Component.text("[死体]"));
-            sign.line(1, Component.text(player.getName()));
-            sign.update();
-
-            for (int i = 0; i < size; i++){
-                if (player.getInventory().getItem(i) == null){
-                    continue;
-                }
-                config.set("block"+i, player.getInventory().getItem(i));
-                player.getInventory().clear(i);
-            }
-            config.save(file);
-
-
-            plugin.getLogger().info("生成チェック : " + plugin.getDataFolder().getPath().replaceAll("\\\\","/") + "/d/" + fileName);
-            for (Player onPlayer : Bukkit.getServer().getOnlinePlayers()){
-                onPlayer.sendMessage(e.deathMessage());
-            }
-
-            player.sendMessage(ChatColor.YELLOW+"[ななみ生活鯖] "+ChatColor.RESET+"以下の場所に墓を生成しました！\nX: "+player.getLocation().getBlockX()+" Y:"+player.getLocation().getBlockY()+" Z: "+player.getLocation().getBlockZ());
-        } catch (IOException ex){
-            ex.printStackTrace();
-        }
-
-
-        player.spigot().respawn();
-        e.setCancelled(true);
 
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void PlayerInteractEvent (PlayerInteractEvent e){
-        Block block = e.getClickedBlock();
-        if (block != null && block.getState() instanceof Sign){
-            Location location = block.getLocation();
 
-            if (!new File("./" + plugin.getDataFolder().getPath().replaceAll("\\\\", "/") + "/d/").exists()){
-                return;
-            }
-
-            String fileName = e.getPlayer().getUniqueId().toString() + "_" + location.getWorld().getName() + "_" + location.getBlockX() + "_" + location.getBlockY() + "_" + location.getBlockZ() + ".yml";
-            File file = new File("./" + plugin.getDataFolder().getPath().replaceAll("\\\\", "/") + "/d/" + fileName);
-            if (!file.exists()){
-                return;
-            }
-
-            YamlConfiguration config = new YamlConfiguration();
-            try {
-                config.load(file);
-
-                Material oldBlockType = null;
-                if (config.isSet("oldBlockType")){
-                    oldBlockType = Material.getMaterial(config.getString("oldBlockType"));
-                }
-                if (oldBlockType != null){
-                    // location.getBlock().setType(oldBlockType);
-                    Block blockAt = Bukkit.getServer().getWorld(location.getWorld().getUID()).getBlockAt(location);
-                    blockAt.setType(oldBlockType);
-
-                } else {
-                    Block blockAt = Bukkit.getServer().getWorld(location.getWorld().getUID()).getBlockAt(location);
-                    blockAt.setType(Material.AIR);
-                }
-
-                for (int i = 0; i < e.getPlayer().getInventory().getSize(); i++){
-                    ItemStack stack = config.getItemStack("block" + i);
-                    if (stack != null){
-                        e.getPlayer().getInventory().addItem(stack);
-                    }
-                }
-                
-
-                File file2 = new File("./" + plugin.getDataFolder().getPath().replaceAll("\\\\", "/") + "/d/" + fileName);
-                file2.delete();
-
-                e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "アイテムを復活しました！");
-                e.setCancelled(true);
-            } catch (IOException | InvalidConfigurationException ex) {
-                ex.printStackTrace();
-            }
-        }
     }
 }
