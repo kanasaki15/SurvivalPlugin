@@ -14,12 +14,13 @@ import net.kyori.adventure.text.event.ClickEvent;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
-import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
-import org.bukkit.Location;
+import org.bukkit.*;
+import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.Chest;
+import org.bukkit.block.Sign;
 import org.bukkit.block.data.BlockData;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -30,6 +31,9 @@ import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.metadata.MetadataValue;
 import org.bukkit.metadata.MetadataValueAdapter;
@@ -38,6 +42,8 @@ import xyz.n7mn.dev.survivalplugin.data.LockCommandUser;
 import xyz.n7mn.dev.survivalplugin.event.DiscordonMessageReceivedEvent;
 import xyz.n7mn.dev.survivalplugin.function.Lati2Hira;
 
+import java.io.File;
+import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
@@ -474,6 +480,61 @@ public class EventListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void PlayerDeathEvent(PlayerDeathEvent e){
+        int exp = e.getDroppedExp();
+        if (e.getEntity().getLocation().getWorld().getName().equals("world_the_end")){
+            e.setKeepInventory(true);
+            e.setKeepLevel(true);
+            return;
+        } else {
+            e.setKeepInventory(false);
+            e.setKeepLevel(false);
+        }
+
+        Player player = e.getEntity();
+        PlayerInventory inventory = e.getEntity().getInventory();
+        YamlConfiguration config = new YamlConfiguration();
+        UUID DeathUUID = UUID.randomUUID();
+
+        config.set("x", player.getLocation().getBlockX());
+        config.set("y", player.getLocation().getBlockY());
+        config.set("z", player.getLocation().getBlockZ());
+
+        config.set("exp", exp);
+        config.set("OldBlockType", player.getLocation().getBlock().getType().name());
+        // BlockData
+        config.set("OldBlockData", player.getLocation().getBlock().getBlockData());
+
+        for (int i = 0; i < inventory.getSize(); i++){
+            ItemStack item = inventory.getItem(i);
+            if (item != null){
+                config.set("item"+i, item);
+                e.getEntity().getInventory().clear(i);
+            }
+        }
+
+
+        try {
+            File file = new File("./" + plugin.getDataFolder().getPath().replaceAll("\\\\", "/") + "/de/");
+            if (!file.exists()){
+                file.mkdir();
+            }
+
+            config.save(new File("./"+plugin.getDataFolder().getPath().replaceAll("\\\\", "/")+"/de/"+DeathUUID.toString()+".yml"));
+            plugin.getLogger().info("[死体生成] "+DeathUUID.toString()+".yml");
+        } catch (IOException ex){
+            ex.printStackTrace();
+        }
+
+        player.getLocation().getWorld().getBlockAt(player.getLocation()).setType(Material.BIRCH_SIGN);
+
+        Block block = player.getLocation().getBlock();
+        block.setMetadata("DeathUUID", new FixedMetadataValue(plugin, DeathUUID.toString()));
+        Sign sign = (Sign) block.getState();
+        sign.line(0, Component.text("[死体]"));
+        sign.line(1, Component.text(player.getName()));
+        sign.update();
+
+        player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "ワールド名"+player.getLocation().getWorld().getName()+"の" + "X:" + player.getLocation().getBlockX() + " Y:"+ player.getLocation().getBlockY() + " Z:" + player.getLocation().getBlockZ() + "に死体を生成しました。");
 
     }
 
