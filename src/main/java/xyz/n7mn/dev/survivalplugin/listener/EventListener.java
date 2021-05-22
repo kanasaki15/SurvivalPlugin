@@ -20,6 +20,7 @@ import org.bukkit.block.BlockState;
 import org.bukkit.block.Chest;
 import org.bukkit.block.Sign;
 import org.bukkit.block.data.BlockData;
+import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -55,11 +56,17 @@ public class EventListener implements Listener {
     private final Plugin plugin;
     private final JDA jda;
     private List<LockCommandUser> lockUserList;
-    public EventListener(Plugin plugin, JDA jda, List<LockCommandUser> lockUserList){
+
+    private Map<UUID, Location> graveList;
+    private Map<UUID, Location> chestList;
+
+    public EventListener(Plugin plugin, JDA jda, List<LockCommandUser> lockUserList, Map<UUID, Location> chestList, Map<UUID, Location> graveList){
         this.plugin = plugin;
         this.jda = jda;
 
         this.lockUserList = lockUserList;
+        this.graveList = graveList;
+        this.chestList = chestList;
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
@@ -231,6 +238,8 @@ public class EventListener implements Listener {
                 chestID = UUID.randomUUID();
                 chest.setMetadata("uuid", new FixedMetadataValue(plugin, chestID.toString()));
                 chest.update(true);
+
+                chestList.put(chestID, location);
             } else {
                 chestID = UUID.fromString((String) chest.getMetadata("uuid").get(0).value());
             }
@@ -480,6 +489,7 @@ public class EventListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void PlayerDeathEvent(PlayerDeathEvent e){
+
         int exp = e.getDroppedExp();
         if (e.getEntity().getLocation().getWorld().getName().equals("world_the_end")){
             e.setKeepInventory(true);
@@ -494,6 +504,7 @@ public class EventListener implements Listener {
         PlayerInventory inventory = e.getEntity().getInventory();
         YamlConfiguration config = new YamlConfiguration();
         UUID DeathUUID = UUID.randomUUID();
+        chestList.put(DeathUUID, player.getLocation());
 
         config.set("x", player.getLocation().getBlockX());
         config.set("y", player.getLocation().getBlockY());
@@ -501,8 +512,6 @@ public class EventListener implements Listener {
 
         config.set("exp", exp);
         config.set("OldBlockType", player.getLocation().getBlock().getType().name());
-        // BlockData
-        config.set("OldBlockData", player.getLocation().getBlock().getBlockData());
 
         for (int i = 0; i < inventory.getSize(); i++){
             ItemStack item = inventory.getItem(i);
@@ -534,12 +543,62 @@ public class EventListener implements Listener {
         sign.line(1, Component.text(player.getName()));
         sign.update();
 
+        player.spigot().respawn();
         player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "ワールド名"+player.getLocation().getWorld().getName()+"の" + "X:" + player.getLocation().getBlockX() + " Y:"+ player.getLocation().getBlockY() + " Z:" + player.getLocation().getBlockZ() + "に死体を生成しました。");
 
+        e.setCancelled(true);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void PlayerInteractEvent (PlayerInteractEvent e){
+        Block block = e.getClickedBlock();
+
+        if (block != null && block.getState() instanceof Sign){
+            if (!block.hasMetadata("DeathUUID")){
+                return;
+            }
+
+            UUID targetUUID = UUID.fromString((String) block.getMetadata("DeathUUID").get(0).value());
+            block.setMetadata("DeathUUID", new FixedMetadataValue(plugin, null));
+
+            File file = new File("./" + plugin.getDataFolder().getPath().replaceAll("\\\\", "/") + "/de/" + targetUUID.toString() + ".yml");
+
+            if (!file.exists()){
+                plugin.getLogger().info("[死体生成] 存在しないデータ : " + targetUUID.toString() + ".yml");
+                return;
+            }
+
+            YamlConfiguration config = new YamlConfiguration();
+            try {
+                config.load(file);
+                Material type = null;
+                if (config.isSet("OldBlockTyp")){
+                    type = Material.getMaterial((String) config.get("OldBlockType"));
+                }
+
+                if (type != null){
+                    block.getLocation().getWorld().getBlockAt(block.getLocation()).setType(type);
+                } else {
+                    block.getLocation().getWorld().getBlockAt(block.getLocation()).setType(Material.AIR);
+                }
+
+                if (config.isSet("exp")){
+                    e.getPlayer().giveExp(config.getInt("exp"));
+                }
+
+                int size = e.getPlayer().getInventory().getSize();
+                for (int i = 0; i < size; i++){
+                    if (config.isSet("item"+i)){
+                        ItemStack stack = config.getItemStack("item" + i);
+                        block.getLocation().getWorld().dropItem(block.getLocation(), stack);
+                    }
+                }
+            } catch (IOException | InvalidConfigurationException ex){
+                ex.printStackTrace();
+            }
+
+
+        }
 
     }
 }
