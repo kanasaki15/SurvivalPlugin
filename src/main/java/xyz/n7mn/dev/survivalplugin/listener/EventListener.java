@@ -229,7 +229,7 @@ public class EventListener implements Listener {
             try {
                 Connection con = DriverManager.getConnection("jdbc:mysql://" + plugin.getConfig().getString("mysqlServer") + ":" + plugin.getConfig().getInt("mysqlPort") + "/" + plugin.getConfig().getString("mysqlDatabase") + plugin.getConfig().getString("mysqlOption"), plugin.getConfig().getString("mysqlUsername"), plugin.getConfig().getString("mysqlPassword"));
 
-                PreparedStatement statement = con.prepareStatement("SELECT * FROM LockList WHERE BlockID = ?");
+                PreparedStatement statement = con.prepareStatement("SELECT * FROM LockList WHERE BlockID = ? AND Active = 1");
                 statement.setString(1, chestID.toString());
                 ResultSet set = statement.executeQuery();
 
@@ -309,11 +309,84 @@ public class EventListener implements Listener {
                     return;
                 }
                 // 削除
+                UUID delUser = u.getAddUser();
+                UUID userUUID = u.getUserUUID();
+
+                boolean check = false;
+                boolean isParent = false;
+                boolean isDelCheck = true;
+                while (set.next()){
+                    check = true;
+                    if (userUUID.toString().equals(set.getString("MinecraftUserID"))){
+                        isParent = set.getBoolean("IsParent");
+                        break;
+                    }
+
+                    if (delUser != null && delUser.toString().equals(set.getString("MinecraftUserID"))){
+                        isDelCheck = false;
+                    }
+                }
+
+                set.close();
+                statement.close();
+
+                if (check && !isParent && delUser != null){
+                    e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "保護を追加した人しか保護削除できません。");
+                    con.close();
+                    return;
+                }
+
+                if (check && !isParent){
+                    //plugin.getLogger().info("a");
+                    e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "すでに解除されています。");
+                    con.close();
+                    return;
+                }
+
+                if (check && !isDelCheck){
+                    //plugin.getLogger().info("b");
+                    e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "すでに解除されています。");
+                    con.close();
+                    return;
+                }
+
+                if (!check){
+                    e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "すでに解除されています。");
+                    con.close();
+                    return;
+                }
+
+                new Thread(()->{
+                    try {
+                        PreparedStatement statement1 = con.prepareStatement("UPDATE `LockList` SET `Active` = ? WHERE BlockID = ? AND MinecraftUserID = ?");
+                        statement1.setBoolean(1, false);
+                        statement1.setString(2, chestID.toString());
+                        if (delUser == null){
+                            statement1.setString(3, userUUID.toString());
+                        } else {
+                            statement1.setString(3, delUser.toString());
+                        }
+                        statement1.execute();
+                        statement1.close();
+                        con.close();
+                    } catch (SQLException ex){
+                        ex.printStackTrace();
+                    }
+
+                }).start();
+
+                if (delUser != null){
+                    e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "保護チェストに登録解除が完了しました。");
+                } else {
+                    e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "チェストを保護解除しました。");
+                }
             } catch (SQLException ex){
                 ex.printStackTrace();
             }
-
+            return;
         }
+
+        // ロックチェック
 
     }
 
