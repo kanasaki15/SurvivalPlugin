@@ -610,7 +610,7 @@ public class EventListener implements Listener {
             }
 
             String uuid = (String) block.getMetadata("uuid").get(0).value();
-            plugin.getLogger().info(uuid);
+            //plugin.getLogger().info(uuid);
             try {
                 Connection con = DriverManager.getConnection("jdbc:mysql://" + plugin.getConfig().getString("mysqlServer") + ":" + plugin.getConfig().getInt("mysqlPort") + "/" + plugin.getConfig().getString("mysqlDatabase") + plugin.getConfig().getString("mysqlOption"), plugin.getConfig().getString("mysqlUsername"), plugin.getConfig().getString("mysqlPassword"));
 
