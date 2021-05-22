@@ -17,6 +17,7 @@ import okhttp3.Response;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.Chest;
+import org.bukkit.block.ShulkerBox;
 import org.bukkit.block.Sign;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -24,6 +25,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.inventory.InventoryType;
@@ -537,9 +540,9 @@ public class EventListener implements Listener {
         sign.line(1, Component.text(player.getName()));
         sign.update();
 
-        player.spigot().respawn();
-        player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "ワールド名"+player.getLocation().getWorld().getName()+"の" + "X:" + player.getLocation().getBlockX() + " Y:"+ player.getLocation().getBlockY() + " Z:" + player.getLocation().getBlockZ() + "に死体を生成しました。");
+        player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "ワールド名"+player.getLocation().getWorld().getName()+"の" + "X:" + player.getLocation().getBlockX() + " Y:"+ player.getLocation().getBlockY() + " Z:" + player.getLocation().getBlockZ() + "に死体を生成しました。 (左クリックで回収できます。)");
 
+        player.spigot().respawn();
         e.setCancelled(true);
     }
 
@@ -590,9 +593,51 @@ public class EventListener implements Listener {
             } catch (IOException | InvalidConfigurationException ex){
                 ex.printStackTrace();
             }
+        }
+    }
 
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void EntityExplodeEvent (EntityExplodeEvent e){
+        e.setCancelled(true);
+    }
 
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void BlockBreakEvent(BlockBreakEvent e){
+        Block block = e.getBlock();
+        if (block.getState() instanceof Chest){
+            if (!block.hasMetadata("uuid")){
+                return;
+            }
+
+            String uuid = (String) block.getMetadata("uuid").get(0).value();
+            plugin.getLogger().info(uuid);
+            try {
+                Connection con = DriverManager.getConnection("jdbc:mysql://" + plugin.getConfig().getString("mysqlServer") + ":" + plugin.getConfig().getInt("mysqlPort") + "/" + plugin.getConfig().getString("mysqlDatabase") + plugin.getConfig().getString("mysqlOption"), plugin.getConfig().getString("mysqlUsername"), plugin.getConfig().getString("mysqlPassword"));
+
+                PreparedStatement statement = con.prepareStatement("SELECT * FROM LockList WHERE BlockID = ? AND Active = 1");
+                statement.setString(1, uuid);
+                ResultSet set = statement.executeQuery();
+                if (set.next()){
+                    e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "チェスト保護がかかっています。");
+                    e.setCancelled(true);
+                }
+
+                set.close();
+                statement.close();
+                con.close();
+            } catch (SQLException ex){
+                ex.printStackTrace();
+            }
+
+            return;
         }
 
+        if (block.getState() instanceof Sign){
+            if (!block.hasMetadata("DeathUUID")){
+                return;
+            }
+
+            e.setCancelled(true);
+        }
     }
 }
