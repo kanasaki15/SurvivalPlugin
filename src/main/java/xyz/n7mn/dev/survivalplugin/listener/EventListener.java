@@ -197,6 +197,7 @@ public class EventListener implements Listener {
         boolean isAdd = false;
 
         LockCommandUser u = null;
+        int i = 0;
         for (LockCommandUser user : lockUserList){
             if (e.getPlayer().getUniqueId().equals(user.getUserUUID())){
                 isAdd = user.isAdd();
@@ -204,26 +205,29 @@ public class EventListener implements Listener {
                 u = user;
                 break;
             }
+            i++;
         }
 
-        lockUserList.remove(u);
+        if (u != null){
+            lockUserList.remove(i);
+        }
 
         Location location = e.getInventory().getLocation();
         Chest chest = (Chest) location.getBlock().getState();
-
-        UUID chestID;
-        if (!chest.hasMetadata("uuid")){
-            chestID = UUID.randomUUID();
-            chest.setMetadata("uuid", new FixedMetadataValue(plugin, chestID.toString()));
-            chest.update(true);
-        } else {
-            chestID = UUID.fromString((String) chest.getMetadata("uuid").get(0).value());
-        }
 
         if (isFound){
             e.getView().close();
             e.getPlayer().closeInventory();
             e.setCancelled(true);
+
+            UUID chestID;
+            if (!chest.hasMetadata("uuid")){
+                chestID = UUID.randomUUID();
+                chest.setMetadata("uuid", new FixedMetadataValue(plugin, chestID.toString()));
+                chest.update(true);
+            } else {
+                chestID = UUID.fromString((String) chest.getMetadata("uuid").get(0).value());
+            }
 
             // ロック追加 or 解除処理
             try {
@@ -277,6 +281,12 @@ public class EventListener implements Listener {
                         return;
                     }
 
+                    if (!check && addUser != null){
+                        e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "保護されていないので追加登録できません。");
+                        con.close();
+                        return;
+                    }
+
                     new Thread(()->{
                         try {
                             PreparedStatement statement1 = con.prepareStatement("INSERT INTO `LockList`(`UUID`, `BlockID`, `BlockType`, `MinecraftUserID`, `IsParent`, `Active`) VALUES (?,?,?,?,?,?)");
@@ -317,14 +327,15 @@ public class EventListener implements Listener {
                 boolean isDelCheck = true;
                 while (set.next()){
                     check = true;
+                    if (delUser != null && delUser.toString().equals(set.getString("MinecraftUserID"))){
+                        isDelCheck = false;
+                    }
+
                     if (userUUID.toString().equals(set.getString("MinecraftUserID"))){
                         isParent = set.getBoolean("IsParent");
                         break;
                     }
 
-                    if (delUser != null && delUser.toString().equals(set.getString("MinecraftUserID"))){
-                        isDelCheck = false;
-                    }
                 }
 
                 set.close();
@@ -385,9 +396,47 @@ public class EventListener implements Listener {
             }
             return;
         }
-
         // ロックチェック
+        UUID UserUUID = e.getPlayer().getUniqueId();
+        UUID chestID;
+        if (!chest.hasMetadata("uuid")){
+            return;
+        } else {
+            chestID = UUID.fromString((String) chest.getMetadata("uuid").get(0).value());
+        }
 
+        try {
+
+            Connection con = DriverManager.getConnection("jdbc:mysql://" + plugin.getConfig().getString("mysqlServer") + ":" + plugin.getConfig().getInt("mysqlPort") + "/" + plugin.getConfig().getString("mysqlDatabase") + plugin.getConfig().getString("mysqlOption"), plugin.getConfig().getString("mysqlUsername"), plugin.getConfig().getString("mysqlPassword"));
+
+            PreparedStatement statement = con.prepareStatement("SELECT * FROM LockList WHERE BlockID = ? AND Active = 1");
+            statement.setString(1, chestID.toString());
+            ResultSet set = statement.executeQuery();
+
+            boolean isCheck = false;
+            boolean isFoundData = false;
+            while (set.next()){
+                isFoundData = true;
+                if (UserUUID.toString().equals(set.getString("MinecraftUserID"))){
+                    isCheck = true;
+                    break;
+                }
+            }
+
+            if (!isCheck && isFoundData){
+                e.getView().close();
+                e.getPlayer().closeInventory();
+                e.setCancelled(true);
+                e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "このチェストは保護されています。");
+            }
+
+            set.close();
+            statement.close();
+            con.close();
+
+        } catch (SQLException ex){
+            ex.printStackTrace();
+        }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
