@@ -501,7 +501,7 @@ public class EventListener implements Listener {
         PlayerInventory inventory = e.getEntity().getInventory();
         YamlConfiguration config = new YamlConfiguration();
         UUID DeathUUID = UUID.randomUUID();
-        chestList.put(DeathUUID, player.getLocation());
+        graveList.put(DeathUUID, player.getLocation());
 
         config.set("x", player.getLocation().getBlockX());
         config.set("y", player.getLocation().getBlockY());
@@ -564,6 +564,7 @@ public class EventListener implements Listener {
                 plugin.getLogger().info("[死体生成] 存在しないデータ : " + targetUUID.toString() + ".yml");
                 return;
             }
+
 
             YamlConfiguration config = new YamlConfiguration();
             try {
