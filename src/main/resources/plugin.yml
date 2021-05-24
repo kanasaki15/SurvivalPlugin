@@ -38,6 +38,3 @@ commands:
   unlock:
     usage: '/unlock'
     description: ''
-  locklist:
-    usage: '/locklist'
-    description: ''
