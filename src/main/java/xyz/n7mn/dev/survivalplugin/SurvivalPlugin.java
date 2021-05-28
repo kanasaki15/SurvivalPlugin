@@ -5,10 +5,7 @@ import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.utils.MemberCachePolicy;
 import net.dv8tion.jda.api.utils.cache.CacheFlag;
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.World;
-import org.bukkit.WorldCreator;
+import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -108,6 +105,7 @@ public final class SurvivalPlugin extends JavaPlugin {
                     if (target != null){
                         Block block = new Location(target, x, y, z).getBlock();
                         block.setMetadata("uuid", new FixedMetadataValue(this, uuid.toString()));
+                        chestList.put(uuid, block.getLocation());
                     }
 
                 } catch (IOException | InvalidConfigurationException e){
@@ -137,6 +135,7 @@ public final class SurvivalPlugin extends JavaPlugin {
                     if (target != null){
                         Block block = new Location(target, x, y, z).getBlock();
                         block.setMetadata("DeathUUID", new FixedMetadataValue(this, uuid.toString()));
+                        graveList.put(uuid, block.getLocation());
                     }
                 } catch (IOException | InvalidConfigurationException e){
                     e.printStackTrace();
@@ -144,6 +143,7 @@ public final class SurvivalPlugin extends JavaPlugin {
                 }
             }
         }
+        file_g.deleteOnExit();
 
         getLogger().info(getName() + " Ver "+getDescription().getVersion()+" 起動しました。");
     }

@@ -1,6 +1,5 @@
 package xyz.n7mn.dev.survivalplugin.listener;
 
-import com.destroystokyo.paper.event.entity.EntityRemoveFromWorldEvent;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -201,120 +200,193 @@ public class EventListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST)
     public void InventoryOpenEvent(InventoryOpenEvent e){
 
-        if (e.getInventory().getType() != InventoryType.CHEST){
-            return;
-        }
+        if (e.getInventory().getType() == InventoryType.CHEST){
+            boolean isFound = false;
+            boolean isAdd = false;
 
-        boolean isFound = false;
-        boolean isAdd = false;
-
-        LockCommandUser u = null;
-        int i = 0;
-        for (LockCommandUser user : lockUserList){
-            if (e.getPlayer().getUniqueId().equals(user.getUserUUID())){
-                isAdd = user.isAdd();
-                isFound = true;
-                u = user;
-                break;
-            }
-            i++;
-        }
-
-        if (u != null){
-            lockUserList.remove(i);
-        }
-
-        Location location = e.getInventory().getLocation();
-        Chest chest = (Chest) location.getBlock().getState();
-
-        if (isFound){
-            e.getView().close();
-            e.getPlayer().closeInventory();
-            e.setCancelled(true);
-
-            UUID chestID;
-            if (!chest.hasMetadata("uuid")){
-                chestID = UUID.randomUUID();
-                chest.setMetadata("uuid", new FixedMetadataValue(plugin, chestID.toString()));
-                chest.update(true);
-
-                chestList.put(chestID, location);
-            } else {
-                chestID = UUID.fromString((String) chest.getMetadata("uuid").get(0).value());
+            LockCommandUser u = null;
+            int i = 0;
+            for (LockCommandUser user : lockUserList){
+                if (e.getPlayer().getUniqueId().equals(user.getUserUUID())){
+                    isAdd = user.isAdd();
+                    isFound = true;
+                    u = user;
+                    break;
+                }
+                i++;
             }
 
-            // ロック追加 or 解除処理
-            try {
-                Connection con = DriverManager.getConnection("jdbc:mysql://" + plugin.getConfig().getString("mysqlServer") + ":" + plugin.getConfig().getInt("mysqlPort") + "/" + plugin.getConfig().getString("mysqlDatabase") + plugin.getConfig().getString("mysqlOption"), plugin.getConfig().getString("mysqlUsername"), plugin.getConfig().getString("mysqlPassword"));
+            if (u != null){
+                lockUserList.remove(i);
+            }
 
-                PreparedStatement statement = con.prepareStatement("SELECT * FROM LockList WHERE BlockID = ? AND Active = 1");
-                statement.setString(1, chestID.toString());
-                ResultSet set = statement.executeQuery();
+            Location location = e.getInventory().getLocation();
+            Chest chest = (Chest) location.getBlock().getState();
+
+            if (isFound){
+                e.getView().close();
+                e.getPlayer().closeInventory();
+                e.setCancelled(true);
+
+                UUID chestID;
+                if (!chest.hasMetadata("uuid")){
+                    chestID = UUID.randomUUID();
+                    chest.setMetadata("uuid", new FixedMetadataValue(plugin, chestID.toString()));
+                    chest.update(true);
+
+                    chestList.put(chestID, location);
+                } else {
+                    chestID = UUID.fromString((String) chest.getMetadata("uuid").get(0).value());
+                }
+
+                // ロック追加 or 解除処理
+                try {
+                    Connection con = DriverManager.getConnection("jdbc:mysql://" + plugin.getConfig().getString("mysqlServer") + ":" + plugin.getConfig().getInt("mysqlPort") + "/" + plugin.getConfig().getString("mysqlDatabase") + plugin.getConfig().getString("mysqlOption"), plugin.getConfig().getString("mysqlUsername"), plugin.getConfig().getString("mysqlPassword"));
+
+                    PreparedStatement statement = con.prepareStatement("SELECT * FROM LockList WHERE BlockID = ? AND Active = 1");
+                    statement.setString(1, chestID.toString());
+                    ResultSet set = statement.executeQuery();
 
 
-                if (isAdd){
-                    // 追加
-                    UUID addUser = u.getAddUser();
+                    if (isAdd){
+                        // 追加
+                        UUID addUser = u.getAddUser();
+                        UUID userUUID = u.getUserUUID();
+
+                        boolean check = false;
+                        boolean isParent = false;
+                        boolean isAddCheck = true;
+                        while (set.next()){
+                            check = true;
+                            if (userUUID.toString().equals(set.getString("MinecraftUserID"))){
+                                isParent = set.getBoolean("IsParent");
+                                break;
+                            }
+
+                            if (addUser != null && addUser.toString().equals(set.getString("MinecraftUserID"))){
+                                isAddCheck = false;
+                            }
+                        }
+
+                        set.close();
+                        statement.close();
+
+                        // System.out.println("check " + check);
+                        // System.out.println("isParent" + isParent);
+                        if (check && !isParent && addUser != null){
+                            e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "保護を追加した人しか保護追加できません。");
+                            con.close();
+                            return;
+                        }
+
+                        if (check && addUser == null){
+                            e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "すでに登録されています。");
+                            con.close();
+                            return;
+                        }
+
+                        if (check && !isAddCheck){
+                            e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "すでに登録されています。");
+                            con.close();
+                            return;
+                        }
+
+                        if (!check && addUser != null){
+                            e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "保護されていないので追加登録できません。");
+                            con.close();
+                            return;
+                        }
+
+                        new Thread(()->{
+                            try {
+                                PreparedStatement statement1 = con.prepareStatement("INSERT INTO `LockList`(`UUID`, `BlockID`, `BlockType`, `MinecraftUserID`, `IsParent`, `Active`) VALUES (?,?,?,?,?,?)");
+                                statement1.setString(1, UUID.randomUUID().toString());
+                                statement1.setString(2, chestID.toString());
+                                statement1.setString(3, chest.getType().name());
+                                if (addUser == null){
+                                    statement1.setString(4, userUUID.toString());
+                                    statement1.setBoolean(5, true);
+                                } else {
+                                    statement1.setString(4, addUser.toString());
+                                    statement1.setBoolean(5, false);
+                                }
+                                statement1.setBoolean(6, true);
+                                statement1.execute();
+                                statement1.close();
+                                con.close();
+                            } catch (SQLException ex){
+                                ex.printStackTrace();
+                            }
+
+                        }).start();
+
+                        if (addUser != null){
+                            e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "保護チェストに追加登録が完了しました。");
+                        } else {
+                            e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "チェストを保護しました。");
+                        }
+
+                        return;
+                    }
+                    // 削除
+                    UUID delUser = u.getAddUser();
                     UUID userUUID = u.getUserUUID();
 
                     boolean check = false;
                     boolean isParent = false;
-                    boolean isAddCheck = true;
+                    boolean isDelCheck = true;
                     while (set.next()){
                         check = true;
+                        if (delUser != null && delUser.toString().equals(set.getString("MinecraftUserID"))){
+                            isDelCheck = false;
+                        }
+
                         if (userUUID.toString().equals(set.getString("MinecraftUserID"))){
                             isParent = set.getBoolean("IsParent");
                             break;
                         }
 
-                        if (addUser != null && addUser.toString().equals(set.getString("MinecraftUserID"))){
-                            isAddCheck = false;
-                        }
                     }
 
                     set.close();
                     statement.close();
 
-                    // System.out.println("check " + check);
-                    // System.out.println("isParent" + isParent);
-                    if (check && !isParent && addUser != null){
-                        e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "保護を追加した人しか保護追加できません。");
+                    if (check && !isParent && delUser != null){
+                        e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "保護を追加した人しか保護削除できません。");
                         con.close();
                         return;
                     }
 
-                    if (check && addUser == null){
-                        e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "すでに登録されています。");
+                    if (check && !isParent){
+                        //plugin.getLogger().info("a");
+                        e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "すでに解除されています。");
                         con.close();
                         return;
                     }
 
-                    if (check && !isAddCheck){
-                        e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "すでに登録されています。");
+                    if (check && !isDelCheck){
+                        //plugin.getLogger().info("b");
+                        e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "すでに解除されています。");
                         con.close();
                         return;
                     }
 
-                    if (!check && addUser != null){
-                        e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "保護されていないので追加登録できません。");
+                    if (!check){
+                        e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "すでに解除されています。");
                         con.close();
                         return;
                     }
 
                     new Thread(()->{
                         try {
-                            PreparedStatement statement1 = con.prepareStatement("INSERT INTO `LockList`(`UUID`, `BlockID`, `BlockType`, `MinecraftUserID`, `IsParent`, `Active`) VALUES (?,?,?,?,?,?)");
-                            statement1.setString(1, UUID.randomUUID().toString());
+                            PreparedStatement statement1 = con.prepareStatement("UPDATE `LockList` SET `Active` = ? WHERE BlockID = ? AND MinecraftUserID = ?");
+                            statement1.setBoolean(1, false);
                             statement1.setString(2, chestID.toString());
-                            statement1.setString(3, chest.getType().name());
-                            if (addUser == null){
-                                statement1.setString(4, userUUID.toString());
-                                statement1.setBoolean(5, true);
+                            if (delUser == null){
+                                statement1.setString(3, userUUID.toString());
                             } else {
-                                statement1.setString(4, addUser.toString());
-                                statement1.setBoolean(5, false);
+                                statement1.setString(3, delUser.toString());
                             }
-                            statement1.setBoolean(6, true);
                             statement1.execute();
                             statement1.close();
                             con.close();
@@ -324,132 +396,214 @@ public class EventListener implements Listener {
 
                     }).start();
 
-                    if (addUser != null){
-                        e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "保護チェストに追加登録が完了しました。");
+                    if (delUser != null){
+                        e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "保護チェストに登録解除が完了しました。");
                     } else {
-                        e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "チェストを保護しました。");
+                        e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "チェストを保護解除しました。");
                     }
-
-                    return;
+                } catch (SQLException ex){
+                    ex.printStackTrace();
                 }
-                // 削除
-                UUID delUser = u.getAddUser();
-                UUID userUUID = u.getUserUUID();
+                return;
+            }
+            // ロックチェック
+            UUID UserUUID = e.getPlayer().getUniqueId();
+            UUID chestID;
+            if (!chest.hasMetadata("uuid")){
+                return;
+            } else {
+                chestID = UUID.fromString((String) chest.getMetadata("uuid").get(0).value());
+            }
 
-                boolean check = false;
-                boolean isParent = false;
-                boolean isDelCheck = true;
+            try {
+
+                Connection con = DriverManager.getConnection("jdbc:mysql://" + plugin.getConfig().getString("mysqlServer") + ":" + plugin.getConfig().getInt("mysqlPort") + "/" + plugin.getConfig().getString("mysqlDatabase") + plugin.getConfig().getString("mysqlOption"), plugin.getConfig().getString("mysqlUsername"), plugin.getConfig().getString("mysqlPassword"));
+
+                PreparedStatement statement = con.prepareStatement("SELECT * FROM LockList WHERE BlockID = ? AND Active = 1");
+                statement.setString(1, chestID.toString());
+                ResultSet set = statement.executeQuery();
+
+                boolean isCheck = false;
+                boolean isFoundData = false;
                 while (set.next()){
-                    check = true;
-                    if (delUser != null && delUser.toString().equals(set.getString("MinecraftUserID"))){
-                        isDelCheck = false;
-                    }
-
-                    if (userUUID.toString().equals(set.getString("MinecraftUserID"))){
-                        isParent = set.getBoolean("IsParent");
+                    isFoundData = true;
+                    if (UserUUID.toString().equals(set.getString("MinecraftUserID"))){
+                        isCheck = true;
                         break;
                     }
+                }
 
+                if (!isCheck && isFoundData){
+                    e.getView().close();
+                    e.getPlayer().closeInventory();
+                    e.setCancelled(true);
+                    e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "このチェストは保護されています。");
                 }
 
                 set.close();
                 statement.close();
+                con.close();
 
-                if (check && !isParent && delUser != null){
-                    e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "保護を追加した人しか保護削除できません。");
-                    con.close();
-                    return;
-                }
-
-                if (check && !isParent){
-                    //plugin.getLogger().info("a");
-                    e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "すでに解除されています。");
-                    con.close();
-                    return;
-                }
-
-                if (check && !isDelCheck){
-                    //plugin.getLogger().info("b");
-                    e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "すでに解除されています。");
-                    con.close();
-                    return;
-                }
-
-                if (!check){
-                    e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "すでに解除されています。");
-                    con.close();
-                    return;
-                }
-
-                new Thread(()->{
-                    try {
-                        PreparedStatement statement1 = con.prepareStatement("UPDATE `LockList` SET `Active` = ? WHERE BlockID = ? AND MinecraftUserID = ?");
-                        statement1.setBoolean(1, false);
-                        statement1.setString(2, chestID.toString());
-                        if (delUser == null){
-                            statement1.setString(3, userUUID.toString());
-                        } else {
-                            statement1.setString(3, delUser.toString());
-                        }
-                        statement1.execute();
-                        statement1.close();
-                        con.close();
-                    } catch (SQLException ex){
-                        ex.printStackTrace();
-                    }
-
-                }).start();
-
-                if (delUser != null){
-                    e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "保護チェストに登録解除が完了しました。");
-                } else {
-                    e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "チェストを保護解除しました。");
-                }
             } catch (SQLException ex){
                 ex.printStackTrace();
             }
             return;
         }
-        // ロックチェック
-        UUID UserUUID = e.getPlayer().getUniqueId();
-        UUID chestID;
-        if (!chest.hasMetadata("uuid")){
-            return;
-        } else {
-            chestID = UUID.fromString((String) chest.getMetadata("uuid").get(0).value());
-        }
 
-        try {
+        if (e.getInventory().getType() == InventoryType.SHULKER_BOX){
+            boolean isFound = false;
+            boolean isAdd = false;
 
-            Connection con = DriverManager.getConnection("jdbc:mysql://" + plugin.getConfig().getString("mysqlServer") + ":" + plugin.getConfig().getInt("mysqlPort") + "/" + plugin.getConfig().getString("mysqlDatabase") + plugin.getConfig().getString("mysqlOption"), plugin.getConfig().getString("mysqlUsername"), plugin.getConfig().getString("mysqlPassword"));
-
-            PreparedStatement statement = con.prepareStatement("SELECT * FROM LockList WHERE BlockID = ? AND Active = 1");
-            statement.setString(1, chestID.toString());
-            ResultSet set = statement.executeQuery();
-
-            boolean isCheck = false;
-            boolean isFoundData = false;
-            while (set.next()){
-                isFoundData = true;
-                if (UserUUID.toString().equals(set.getString("MinecraftUserID"))){
-                    isCheck = true;
+            LockCommandUser u = null;
+            int i = 0;
+            for (LockCommandUser user : lockUserList){
+                if (e.getPlayer().getUniqueId().equals(user.getUserUUID())){
+                    isAdd = user.isAdd();
+                    isFound = true;
+                    u = user;
                     break;
                 }
+                i++;
             }
 
-            if (!isCheck && isFoundData){
+            if (u != null){
+                lockUserList.remove(i);
+            }
+
+            Location location = e.getInventory().getLocation();
+            ShulkerBox box = (ShulkerBox) location.getBlock().getState();
+
+            if (isFound) {
+                if (!box.hasMetadata("uuid")){
+                    UUID uuid = UUID.randomUUID();
+                    box.setMetadata("uuid", new FixedMetadataValue(plugin, uuid.toString()));
+                    chestList.put(uuid, box.getLocation());
+                }
+
                 e.getView().close();
                 e.getPlayer().closeInventory();
                 e.setCancelled(true);
-                e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "このチェストは保護されています。");
+                HumanEntity player = e.getPlayer();
+
+                if (isAdd){
+                    // 追加
+                    try {
+                        Connection con = DriverManager.getConnection("jdbc:mysql://" + plugin.getConfig().getString("mysqlServer") + ":" + plugin.getConfig().getInt("mysqlPort") + "/" + plugin.getConfig().getString("mysqlDatabase") + plugin.getConfig().getString("mysqlOption"), plugin.getConfig().getString("mysqlUsername"), plugin.getConfig().getString("mysqlPassword"));
+                        PreparedStatement statement = con.prepareStatement("SELECT * FROM LockList WHERE BlockID = ? AND Active = 1");
+                        statement.setString(1, box.getMetadata("uuid").get(0).value().toString());
+                        ResultSet set = statement.executeQuery();
+                        boolean result = false;
+                        boolean resultFound = false;
+                        while (set.next()){
+                            resultFound = true;
+                            if (player.getUniqueId().toString().equals(set.getString("MinecraftUserID")) && set.getBoolean("IsParent")){
+                                result = true;
+                            }
+                        }
+                        set.close();
+                        statement.close();
+
+                        if (!result && resultFound){
+                            player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+"他の人が保護しているシュルカーボックスです。");
+                            con.close();
+                            return;
+                        }
+
+                        if (resultFound){
+                            player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+"すでに保護されているシュルカーボックスです");
+                            con.close();
+                            return;
+                        }
+
+                        player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+"シュルカーボックスを保護しました。");
+                        PreparedStatement statement1 = con.prepareStatement("INSERT INTO `LockList`(`UUID`, `BlockID`, `BlockType`, `MinecraftUserID`, `IsParent`, `Active`) VALUES (?,?,?,?,?,?)");
+                        statement1.setString(1, UUID.randomUUID().toString());
+                        statement1.setString(2, box.getMetadata("uuid").get(0).value().toString());
+                        statement1.setString(3, box.getBlock().getType().name());
+                        statement1.setString(4, player.getUniqueId().toString());
+                        statement1.setBoolean(5, true);
+                        statement1.setBoolean(6, true);
+                        statement1.execute();
+                        statement1.close();
+                        con.close();
+
+                    } catch (SQLException ex){
+                        ex.printStackTrace();
+                    }
+                    return;
+                }
+
+                // 削除
+                try {
+                    Connection con = DriverManager.getConnection("jdbc:mysql://" + plugin.getConfig().getString("mysqlServer") + ":" + plugin.getConfig().getInt("mysqlPort") + "/" + plugin.getConfig().getString("mysqlDatabase") + plugin.getConfig().getString("mysqlOption"), plugin.getConfig().getString("mysqlUsername"), plugin.getConfig().getString("mysqlPassword"));
+                    PreparedStatement statement = con.prepareStatement("SELECT * FROM LockList WHERE BlockID = ? AND Active = 1");
+                    statement.setString(1, box.getMetadata("uuid").get(0).value().toString());
+                    ResultSet set = statement.executeQuery();
+                    boolean result = false;
+                    while (set.next()){
+                        if (player.getUniqueId().toString().equals(set.getString("MinecraftUserID")) && set.getBoolean("IsParent")){
+                            result = true;
+                        }
+                    }
+                    set.close();
+                    statement.close();
+
+                    if (!result){
+                        player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+"他の人が保護しているシュルカーボックスです。");
+                        con.close();
+                        return;
+                    }
+
+                    player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+"シュルカーボックスを保護解除しました。");
+                    PreparedStatement statement1 = con.prepareStatement("UPDATE `LockList` SET `Active` = 0 WHERE BlockID = ?");
+                    statement1.setString(1, box.getMetadata("uuid").get(0).value().toString());
+                    statement1.execute();
+                    statement1.close();
+                    con.close();
+
+                } catch (SQLException ex){
+                    ex.printStackTrace();
+                }
+                return;
             }
 
-            set.close();
-            statement.close();
-            con.close();
+            if (!box.hasMetadata("uuid")){
+                return;
+            }
 
-        } catch (SQLException ex){
-            ex.printStackTrace();
+            // 保護チェック
+            try {
+                Connection con = DriverManager.getConnection("jdbc:mysql://" + plugin.getConfig().getString("mysqlServer") + ":" + plugin.getConfig().getInt("mysqlPort") + "/" + plugin.getConfig().getString("mysqlDatabase") + plugin.getConfig().getString("mysqlOption"), plugin.getConfig().getString("mysqlUsername"), plugin.getConfig().getString("mysqlPassword"));
+                PreparedStatement statement = con.prepareStatement("SELECT * FROM LockList WHERE BlockID = ? AND Active = 1");
+                statement.setString(1, box.getMetadata("uuid").get(0).value().toString());
+                ResultSet set = statement.executeQuery();
+
+                boolean result = false;
+                while (set.next()){
+                    result = true;
+                    if (e.getPlayer().getUniqueId().toString().equals(set.getString("MinecraftUserID"))){
+                        set.close();
+                        statement.close();
+                        con.close();
+                        return;
+                    }
+                }
+                set.close();
+                statement.close();
+                con.close();
+
+                if (!result){
+                    return;
+                }
+            } catch (SQLException ex){
+                ex.printStackTrace();
+            }
+
+            e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+"他の人が保護しているシュルカーボックスです。");
+            e.getView().close();
+            e.getPlayer().closeInventory();
+            e.setCancelled(true);
+
         }
     }
 
@@ -607,7 +761,7 @@ public class EventListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST)
     public void BlockBreakEvent(BlockBreakEvent e){
         Block block = e.getBlock();
-        if (block.getState() instanceof Chest){
+        if (block.getState() instanceof Chest || block.getState() instanceof ShulkerBox){
             if (!block.hasMetadata("uuid")){
                 return;
             }
