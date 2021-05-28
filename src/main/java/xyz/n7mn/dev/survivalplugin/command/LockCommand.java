@@ -41,7 +41,7 @@ public class LockCommand implements CommandExecutor {
 
         for (LockCommandUser user : list){
             if (player.getUniqueId().equals(user.getUserUUID()) && user.isAdd()){
-                player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+"保護したい対象のモノを右クリックしてください。(現在はチェストのみ可能)");
+                player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+"保護したい対象のモノを右クリックしてください。\n(保護可能な種類：チェスト/額縁/シュルカーボックス)");
                 return true;
             } else if (player.getUniqueId().equals(user.getUserUUID())){
                 player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+"まずは保護解除の操作を完了させてください。");
@@ -97,7 +97,7 @@ public class LockCommand implements CommandExecutor {
             list.add(new LockCommandUser(player.getUniqueId(), true, addUserUUID));
         }
 
-        player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+"保護したい対象のモノを右クリックしてください。");
+        player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+"保護したい対象のモノを右クリックしてください。\n(保護可能な種類：チェスト/額縁/シュルカーボックス)");
 
         return true;
     }
