@@ -15,10 +15,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 import org.bukkit.*;
-import org.bukkit.block.Block;
-import org.bukkit.block.Chest;
-import org.bukkit.block.ShulkerBox;
-import org.bukkit.block.Sign;
+import org.bukkit.block.*;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.*;
@@ -721,12 +718,16 @@ public class EventListener implements Listener {
                 return;
             }
 
+            Sign sign = (Sign) block.getState();
+            if (!sign.line(1).toString().equals(e.getPlayer().getName())){
+                return;
+            }
 
             YamlConfiguration config = new YamlConfiguration();
             try {
                 config.load(file);
                 Material type = null;
-                if (config.isSet("OldBlockTyp")){
+                if (config.isSet("OldBlockType")){
                     type = Material.getMaterial((String) config.get("OldBlockType"));
                 }
 
@@ -750,6 +751,8 @@ public class EventListener implements Listener {
             } catch (IOException | InvalidConfigurationException ex){
                 ex.printStackTrace();
             }
+
+            file.deleteOnExit();
         }
     }
 
