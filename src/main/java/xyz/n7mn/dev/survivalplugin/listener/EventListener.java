@@ -139,8 +139,8 @@ public class EventListener implements Listener {
                     TextComponent component1 = Component.text("[確認する]");
                     component1 = component1.clickEvent(ClickEvent.clickEvent(ClickEvent.Action.RUN_COMMAND, "/noti"));
 
-                    //e.getPlayer().sendMessage(component);
-                    //e.getPlayer().sendMessage(component1);
+                    e.getPlayer().sendMessage(component);
+                    e.getPlayer().sendMessage(component1);
                 });
             }
         }).start();
