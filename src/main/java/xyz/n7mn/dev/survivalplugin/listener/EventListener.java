@@ -644,6 +644,7 @@ public class EventListener implements Listener {
         if (e.getEntity().getLocation().getWorld().getName().equals("world_the_end")){
             e.setKeepInventory(true);
             e.setKeepLevel(true);
+            e.getDrops().clear();
             return;
         } else {
             e.setKeepInventory(false);
