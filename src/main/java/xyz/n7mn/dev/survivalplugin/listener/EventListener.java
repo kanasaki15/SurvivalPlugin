@@ -709,6 +709,10 @@ public class EventListener implements Listener {
                 return;
             }
 
+            if (block.getMetadata("DeathUUID").get(0).value() == null){
+                return;
+            }
+
             UUID targetUUID = UUID.fromString((String) block.getMetadata("DeathUUID").get(0).value());
             block.setMetadata("DeathUUID", new FixedMetadataValue(plugin, null));
 
@@ -720,7 +724,10 @@ public class EventListener implements Listener {
             }
 
             Sign sign = (Sign) block.getState();
-            if (!sign.line(1).toString().equals(e.getPlayer().getName())){
+            TextComponent component = (TextComponent) sign.line(1);
+            plugin.getLogger().info(component.content());
+
+            if (!e.getPlayer().getName().startsWith(component.content())){
                 return;
             }
 
