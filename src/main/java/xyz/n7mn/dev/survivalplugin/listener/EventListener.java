@@ -645,6 +645,7 @@ public class EventListener implements Listener {
             e.setKeepInventory(true);
             e.setKeepLevel(true);
             e.getDrops().clear();
+            e.setDroppedExp(0);
             return;
         } else {
             e.setKeepInventory(false);
