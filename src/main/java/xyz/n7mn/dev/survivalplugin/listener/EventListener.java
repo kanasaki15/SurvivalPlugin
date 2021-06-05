@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import io.papermc.paper.event.player.AsyncChatEvent;
+import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.TextChannel;
@@ -138,6 +139,15 @@ public class EventListener implements Listener {
                 });
             }
         }).start();
+
+        new Thread(()->{
+            EmbedBuilder builder = new EmbedBuilder();
+            builder.setTitle(e.getPlayer().getName()+"さんが入室しました。");
+            builder.setColor(java.awt.Color.GREEN);
+            builder.setDescription("現在" + plugin.getServer().getOnlinePlayers().size()+"人です。");
+
+            jda.getTextChannelById(plugin.getConfig().getString("ChatChannel")).sendMessage(builder.build()).queue();
+        }).start();
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
@@ -148,6 +158,15 @@ public class EventListener implements Listener {
             for (Player player : plugin.getServer().getOnlinePlayers()){
                 player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+e.getPlayer().getName()+"さんが退出しました！");
             }
+        }).start();
+
+        new Thread(()->{
+            EmbedBuilder builder = new EmbedBuilder();
+            builder.setTitle(e.getPlayer().getName()+"さんが退出しました。");
+            builder.setColor(java.awt.Color.RED);
+            builder.setDescription("現在" + plugin.getServer().getOnlinePlayers().size()+"人です。");
+
+            jda.getTextChannelById(plugin.getConfig().getString("ChatChannel")).sendMessage(builder.build()).queue();
         }).start();
     }
 
@@ -185,7 +204,17 @@ public class EventListener implements Listener {
         }
 
 
-        e.message(Component.text(sb.toString() + " ("+m.content()+")"));
+        String msg = sb.toString() + " ("+m.content()+")";
+        e.message(Component.text(msg));
+
+        new Thread(()->{
+            EmbedBuilder builder = new EmbedBuilder();
+            builder.setTitle(e.getPlayer().getName());
+            builder.setColor(java.awt.Color.ORANGE);
+            builder.setDescription(msg);
+
+            jda.getTextChannelById(plugin.getConfig().getString("ChatChannel")).sendMessage(builder.build()).queue();
+        }).start();
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
