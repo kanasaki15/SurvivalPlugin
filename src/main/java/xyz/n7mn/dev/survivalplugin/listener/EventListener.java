@@ -538,6 +538,7 @@ public class EventListener implements Listener {
                     statement1.setInt(4, box.getLocation().getBlockX());
                     statement1.setInt(5, box.getLocation().getBlockY());
                     statement1.setInt(6, box.getLocation().getBlockZ());
+                    statement1.setBoolean(7, true);
                     statement1.execute();
                     statement1.close();
                 }
