@@ -726,6 +726,7 @@ public class EventListener implements Listener {
         if (block != null && block.getState() instanceof Sign){
 
             UUID targetUUID = null;
+            UUID targetUser = null;
             try {
                 Connection con = DriverManager.getConnection("jdbc:mysql://" + plugin.getConfig().getString("mysqlServer") + ":" + plugin.getConfig().getInt("mysqlPort") + "/" + plugin.getConfig().getString("mysqlDatabase") + plugin.getConfig().getString("mysqlOption"), plugin.getConfig().getString("mysqlUsername"), plugin.getConfig().getString("mysqlPassword"));
                 con.setAutoCommit(true);
@@ -738,6 +739,7 @@ public class EventListener implements Listener {
                 ResultSet set = statement.executeQuery();
                 if (set.next()){
                     targetUUID = UUID.fromString(set.getString("UUID"));
+                    targetUser = UUID.fromString(set.getString("MinecraftUUID"));
                 }
 
                 set.close();
@@ -749,6 +751,19 @@ public class EventListener implements Listener {
 
             if (targetUUID == null){
                 return;
+            }
+
+            if (targetUser == null){
+                Sign sign = (Sign) block.getState();
+                String str = sign.line(1).insertion();
+
+                if (str != null && !e.getPlayer().getName().startsWith(str)){
+                    return;
+                }
+            } else {
+                if (!e.getPlayer().getUniqueId().equals(targetUser)){
+                    return;
+                }
             }
 
             File file = new File("./" + plugin.getDataFolder().getPath().replaceAll("\\\\", "/") + "/de/" + targetUUID.toString() + ".yml");
