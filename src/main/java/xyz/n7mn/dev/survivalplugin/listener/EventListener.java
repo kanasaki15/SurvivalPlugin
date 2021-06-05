@@ -23,7 +23,6 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
-import org.bukkit.event.block.BlockDamageEvent;
 import org.bukkit.event.entity.*;
 import org.bukkit.event.hanging.HangingBreakEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
@@ -34,7 +33,6 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
-import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.Plugin;
 import xyz.n7mn.dev.survivalplugin.data.LockCommandUser;
 import xyz.n7mn.dev.survivalplugin.event.DiscordonMessageReceivedEvent;
@@ -52,8 +50,6 @@ public class EventListener implements Listener {
     private final Plugin plugin;
     private final JDA jda;
     private List<LockCommandUser> lockUserList;
-
-    private Map<UUID, Location> chestList;
 
     public EventListener(Plugin plugin, JDA jda, List<LockCommandUser> lockUserList){
         this.plugin = plugin;
@@ -224,14 +220,38 @@ public class EventListener implements Listener {
                 e.setCancelled(true);
 
                 UUID chestID;
-                if (!chest.hasMetadata("uuid")){
-                    chestID = UUID.randomUUID();
-                    chest.setMetadata("uuid", new FixedMetadataValue(plugin, chestID.toString()));
-                    chest.update(true);
+                try {
+                    Connection con = DriverManager.getConnection("jdbc:mysql://" + plugin.getConfig().getString("mysqlServer") + ":" + plugin.getConfig().getInt("mysqlPort") + "/" + plugin.getConfig().getString("mysqlDatabase") + plugin.getConfig().getString("mysqlOption"), plugin.getConfig().getString("mysqlUsername"), plugin.getConfig().getString("mysqlPassword"));
 
-                    chestList.put(chestID, location);
-                } else {
-                    chestID = UUID.fromString((String) chest.getMetadata("uuid").get(0).value());
+                    PreparedStatement statement = con.prepareStatement("SELECT * FROM LockUUIDList WHERE Active = 1 AND world = ? AND x = ? AND y = ? AND z = ?");
+                    statement.setString(1, chest.getLocation().getWorld().getUID().toString());
+                    statement.setInt(2, chest.getLocation().getBlockX());
+                    statement.setInt(3, chest.getLocation().getBlockY());
+                    statement.setInt(4, chest.getLocation().getBlockZ());
+                    ResultSet set = statement.executeQuery();
+                    if (set.next()){
+                        chestID = UUID.fromString(set.getString("UUID"));
+                    } else {
+                        chestID = UUID.randomUUID();
+
+                        PreparedStatement statement1 = con.prepareStatement("INSERT INTO `LockUUIDList`(`UUID`, `world`, `x`, `y`, `z`, `Active`) VALUES (?,?,?,?,?,?)");
+                        statement1.setString(1, chestID.toString());
+                        statement1.setString(2, chest.getLocation().getWorld().getUID().toString());
+                        statement1.setInt(3, chest.getLocation().getBlockX());
+                        statement1.setInt(4, chest.getLocation().getBlockY());
+                        statement1.setInt(5, chest.getLocation().getBlockZ());
+                        statement1.setBoolean(6, true);
+                        statement1.execute();
+                        statement1.close();
+                    }
+                    set.close();
+                    statement.close();
+
+                    con.close();
+                } catch (SQLException ex){
+                    ex.printStackTrace();
+                    e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "エラーが発生しました。もう一度実行してもエラーになる場合は運営に教えてください。");
+                    return;
                 }
 
                 // ロック追加 or 解除処理
@@ -404,10 +424,38 @@ public class EventListener implements Listener {
             // ロックチェック
             UUID UserUUID = e.getPlayer().getUniqueId();
             UUID chestID;
-            if (!chest.hasMetadata("uuid")){
+            try {
+                Connection con = DriverManager.getConnection("jdbc:mysql://" + plugin.getConfig().getString("mysqlServer") + ":" + plugin.getConfig().getInt("mysqlPort") + "/" + plugin.getConfig().getString("mysqlDatabase") + plugin.getConfig().getString("mysqlOption"), plugin.getConfig().getString("mysqlUsername"), plugin.getConfig().getString("mysqlPassword"));
+
+                PreparedStatement statement = con.prepareStatement("SELECT * FROM LockUUIDList WHERE Active = 1 AND world = ? AND x = ? AND y = ? AND z = ?");
+                statement.setString(1, chest.getLocation().getWorld().getUID().toString());
+                statement.setInt(2, chest.getLocation().getBlockX());
+                statement.setInt(3, chest.getLocation().getBlockY());
+                statement.setInt(4, chest.getLocation().getBlockZ());
+                ResultSet set = statement.executeQuery();
+                if (set.next()){
+                    chestID = UUID.fromString(set.getString("UUID"));
+                } else {
+                    chestID = UUID.randomUUID();
+
+                    PreparedStatement statement1 = con.prepareStatement("INSERT INTO `DeathList`(`UUID`, `MinecraftUUID`, `world`, `x`, `y`, `z`, `Active`) VALUES (?,?,?,?,?,?,?)");
+                    statement1.setString(1, chestID.toString());
+                    statement1.setString(2, e.getPlayer().getUniqueId().toString());
+                    statement1.setString(3, chest.getLocation().getWorld().getUID().toString());
+                    statement1.setInt(4, chest.getLocation().getBlockX());
+                    statement1.setInt(5, chest.getLocation().getBlockY());
+                    statement1.setInt(6, chest.getLocation().getBlockZ());
+                    statement1.setBoolean(7, true);
+                    statement1.execute();
+                    statement1.close();
+                }
+                set.close();
+                statement.close();
+
+                con.close();
+            } catch (SQLException ex){
+                ex.printStackTrace();
                 return;
-            } else {
-                chestID = UUID.fromString((String) chest.getMetadata("uuid").get(0).value());
             }
 
             try {
@@ -468,13 +516,41 @@ public class EventListener implements Listener {
             Location location = e.getInventory().getLocation();
             ShulkerBox box = (ShulkerBox) location.getBlock().getState();
 
-            if (isFound) {
-                if (!box.hasMetadata("uuid")){
-                    UUID uuid = UUID.randomUUID();
-                    box.setMetadata("uuid", new FixedMetadataValue(plugin, uuid.toString()));
-                    chestList.put(uuid, box.getLocation());
-                }
+            UUID uuid;
+            try {
+                Connection con = DriverManager.getConnection("jdbc:mysql://" + plugin.getConfig().getString("mysqlServer") + ":" + plugin.getConfig().getInt("mysqlPort") + "/" + plugin.getConfig().getString("mysqlDatabase") + plugin.getConfig().getString("mysqlOption"), plugin.getConfig().getString("mysqlUsername"), plugin.getConfig().getString("mysqlPassword"));
 
+                PreparedStatement statement = con.prepareStatement("SELECT * FROM LockUUIDList WHERE Active = 1 AND world = ? AND x = ? AND y = ? AND z = ?");
+                statement.setString(1, box.getLocation().getWorld().getUID().toString());
+                statement.setInt(2, box.getLocation().getBlockX());
+                statement.setInt(3, box.getLocation().getBlockY());
+                statement.setInt(4, box.getLocation().getBlockZ());
+                ResultSet set = statement.executeQuery();
+                if (set.next()){
+                    uuid = UUID.fromString(set.getString("UUID"));
+                } else {
+                    uuid = UUID.randomUUID();
+
+                    PreparedStatement statement1 = con.prepareStatement("INSERT INTO `DeathList`(`UUID`, `MinecraftUUID`, `world`, `x`, `y`, `z`, `Active`) VALUES (?,?,?,?,?,?,?)");
+                    statement1.setString(1, uuid.toString());
+                    statement1.setString(2, e.getPlayer().getUniqueId().toString());
+                    statement1.setString(3, box.getLocation().getWorld().getUID().toString());
+                    statement1.setInt(4, box.getLocation().getBlockX());
+                    statement1.setInt(5, box.getLocation().getBlockY());
+                    statement1.setInt(6, box.getLocation().getBlockZ());
+                    statement1.execute();
+                    statement1.close();
+                }
+                set.close();
+                statement.close();
+
+                con.close();
+            } catch (SQLException ex){
+                ex.printStackTrace();
+                return;
+            }
+
+            if (isFound) {
                 e.getView().close();
                 e.getPlayer().closeInventory();
                 e.setCancelled(true);
@@ -485,7 +561,7 @@ public class EventListener implements Listener {
                     try {
                         Connection con = DriverManager.getConnection("jdbc:mysql://" + plugin.getConfig().getString("mysqlServer") + ":" + plugin.getConfig().getInt("mysqlPort") + "/" + plugin.getConfig().getString("mysqlDatabase") + plugin.getConfig().getString("mysqlOption"), plugin.getConfig().getString("mysqlUsername"), plugin.getConfig().getString("mysqlPassword"));
                         PreparedStatement statement = con.prepareStatement("SELECT * FROM LockList WHERE BlockID = ? AND Active = 1");
-                        statement.setString(1, box.getMetadata("uuid").get(0).value().toString());
+                        statement.setString(1, uuid.toString());
                         ResultSet set = statement.executeQuery();
                         boolean result = false;
                         boolean resultFound = false;
@@ -513,7 +589,7 @@ public class EventListener implements Listener {
                         player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+"シュルカーボックスを保護しました。");
                         PreparedStatement statement1 = con.prepareStatement("INSERT INTO `LockList`(`UUID`, `BlockID`, `BlockType`, `MinecraftUserID`, `IsParent`, `Active`) VALUES (?,?,?,?,?,?)");
                         statement1.setString(1, UUID.randomUUID().toString());
-                        statement1.setString(2, box.getMetadata("uuid").get(0).value().toString());
+                        statement1.setString(2, uuid.toString());
                         statement1.setString(3, box.getBlock().getType().name());
                         statement1.setString(4, player.getUniqueId().toString());
                         statement1.setBoolean(5, true);
@@ -532,7 +608,7 @@ public class EventListener implements Listener {
                 try {
                     Connection con = DriverManager.getConnection("jdbc:mysql://" + plugin.getConfig().getString("mysqlServer") + ":" + plugin.getConfig().getInt("mysqlPort") + "/" + plugin.getConfig().getString("mysqlDatabase") + plugin.getConfig().getString("mysqlOption"), plugin.getConfig().getString("mysqlUsername"), plugin.getConfig().getString("mysqlPassword"));
                     PreparedStatement statement = con.prepareStatement("SELECT * FROM LockList WHERE BlockID = ? AND Active = 1");
-                    statement.setString(1, box.getMetadata("uuid").get(0).value().toString());
+                    statement.setString(1, uuid.toString());
                     ResultSet set = statement.executeQuery();
                     boolean result = false;
                     while (set.next()){
@@ -551,7 +627,7 @@ public class EventListener implements Listener {
 
                     player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+"シュルカーボックスを保護解除しました。");
                     PreparedStatement statement1 = con.prepareStatement("UPDATE `LockList` SET `Active` = 0 WHERE BlockID = ?");
-                    statement1.setString(1, box.getMetadata("uuid").get(0).value().toString());
+                    statement1.setString(1, uuid.toString());
                     statement1.execute();
                     statement1.close();
                     con.close();
@@ -562,15 +638,11 @@ public class EventListener implements Listener {
                 return;
             }
 
-            if (!box.hasMetadata("uuid")){
-                return;
-            }
-
             // 保護チェック
             try {
                 Connection con = DriverManager.getConnection("jdbc:mysql://" + plugin.getConfig().getString("mysqlServer") + ":" + plugin.getConfig().getInt("mysqlPort") + "/" + plugin.getConfig().getString("mysqlDatabase") + plugin.getConfig().getString("mysqlOption"), plugin.getConfig().getString("mysqlUsername"), plugin.getConfig().getString("mysqlPassword"));
                 PreparedStatement statement = con.prepareStatement("SELECT * FROM LockList WHERE BlockID = ? AND Active = 1");
-                statement.setString(1, box.getMetadata("uuid").get(0).value().toString());
+                statement.setString(1, uuid.toString());
                 ResultSet set = statement.executeQuery();
 
                 boolean result = false;
@@ -700,13 +772,14 @@ public class EventListener implements Listener {
                 Connection con = DriverManager.getConnection("jdbc:mysql://" + plugin.getConfig().getString("mysqlServer") + ":" + plugin.getConfig().getInt("mysqlPort") + "/" + plugin.getConfig().getString("mysqlDatabase") + plugin.getConfig().getString("mysqlOption"), plugin.getConfig().getString("mysqlUsername"), plugin.getConfig().getString("mysqlPassword"));
                 con.setAutoCommit(true);
 
-                PreparedStatement statement = con.prepareStatement("INSERT INTO `DeathList`(`UUID`, `MinecraftUUID`, `x`, `y`, `z`, `Active`) VALUES (?,?,?,?,?,?)");
+                PreparedStatement statement = con.prepareStatement("INSERT INTO `DeathList`(`UUID`, `MinecraftUUID`, `world`, `x`, `y`, `z`, `Active`) VALUES (?,?,?,?,?,?,?)");
                 statement.setString(1, DeathUUID.toString());
                 statement.setString(2, e.getEntity().getUniqueId().toString());
-                statement.setInt(3, block.getLocation().getBlockX());
-                statement.setInt(4, block.getLocation().getBlockY());
-                statement.setInt(5, block.getLocation().getBlockZ());
-                statement.setBoolean(6, true);
+                statement.setString(3, block.getLocation().getWorld().getUID().toString());
+                statement.setInt(4, block.getLocation().getBlockX());
+                statement.setInt(5, block.getLocation().getBlockY());
+                statement.setInt(6, block.getLocation().getBlockZ());
+                statement.setBoolean(7, true);
 
                 statement.execute();
                 statement.close();
@@ -731,10 +804,11 @@ public class EventListener implements Listener {
                 Connection con = DriverManager.getConnection("jdbc:mysql://" + plugin.getConfig().getString("mysqlServer") + ":" + plugin.getConfig().getInt("mysqlPort") + "/" + plugin.getConfig().getString("mysqlDatabase") + plugin.getConfig().getString("mysqlOption"), plugin.getConfig().getString("mysqlUsername"), plugin.getConfig().getString("mysqlPassword"));
                 con.setAutoCommit(true);
 
-                PreparedStatement statement = con.prepareStatement("SELECT * FROM DeathList WHERE Active = 1 AND x = ? AND y = ? AND z = ?");
-                statement.setInt(1, block.getLocation().getBlockX());
-                statement.setInt(2, block.getLocation().getBlockY());
-                statement.setInt(3, block.getLocation().getBlockZ());
+                PreparedStatement statement = con.prepareStatement("SELECT * FROM DeathList WHERE Active = 1 AND world = ? AND x = ? AND y = ? AND z = ?");
+                statement.setString(1, block.getLocation().getWorld().getUID().toString());
+                statement.setInt(2, block.getLocation().getBlockX());
+                statement.setInt(3, block.getLocation().getBlockY());
+                statement.setInt(4, block.getLocation().getBlockZ());
 
                 ResultSet set = statement.executeQuery();
                 if (set.next()){
@@ -829,11 +903,30 @@ public class EventListener implements Listener {
     public void BlockBreakEvent(BlockBreakEvent e){
         Block block = e.getBlock();
         if (block.getState() instanceof Chest || block.getState() instanceof ShulkerBox){
-            if (!block.hasMetadata("uuid")){
-                return;
+
+            String uuid = "";
+            try {
+                Connection con = DriverManager.getConnection("jdbc:mysql://" + plugin.getConfig().getString("mysqlServer") + ":" + plugin.getConfig().getInt("mysqlPort") + "/" + plugin.getConfig().getString("mysqlDatabase") + plugin.getConfig().getString("mysqlOption"), plugin.getConfig().getString("mysqlUsername"), plugin.getConfig().getString("mysqlPassword"));
+
+                PreparedStatement statement = con.prepareStatement("SELECT * FROM `LockUUIDList` WHERE world = ? AND x = ? AND y = ? AND z = ?");
+                statement.setString(1, block.getLocation().getWorld().getUID().toString());
+                statement.setInt(2, block.getLocation().getBlockX());
+                statement.setInt(3, block.getLocation().getBlockY());
+                statement.setInt(4, block.getLocation().getBlockZ());
+                ResultSet set = statement.executeQuery();
+                if (set.next()){
+                    uuid = set.getString("UUID");
+                }
+                set.close();
+                statement.close();
+                con.close();
+            } catch (SQLException ex){
+                ex.printStackTrace();
             }
 
-            String uuid = (String) block.getMetadata("uuid").get(0).value();
+            if (uuid.equals("")){
+                return;
+            }
             //plugin.getLogger().info(uuid);
             try {
                 Connection con = DriverManager.getConnection("jdbc:mysql://" + plugin.getConfig().getString("mysqlServer") + ":" + plugin.getConfig().getInt("mysqlPort") + "/" + plugin.getConfig().getString("mysqlDatabase") + plugin.getConfig().getString("mysqlOption"), plugin.getConfig().getString("mysqlUsername"), plugin.getConfig().getString("mysqlPassword"));
