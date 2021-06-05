@@ -531,25 +531,26 @@ public class EventListener implements Listener {
                 } else {
                     uuid = UUID.randomUUID();
 
-                    PreparedStatement statement1 = con.prepareStatement("INSERT INTO `DeathList`(`UUID`, `MinecraftUUID`, `world`, `x`, `y`, `z`, `Active`) VALUES (?,?,?,?,?,?,?)");
+                    PreparedStatement statement1 = con.prepareStatement("INSERT INTO `LockUUIDList`(`UUID`, `world`, `x`, `y`, `z`, `Active`) VALUES (?,?,?,?,?,?)");
                     statement1.setString(1, uuid.toString());
-                    statement1.setString(2, e.getPlayer().getUniqueId().toString());
-                    statement1.setString(3, box.getLocation().getWorld().getUID().toString());
-                    statement1.setInt(4, box.getLocation().getBlockX());
-                    statement1.setInt(5, box.getLocation().getBlockY());
-                    statement1.setInt(6, box.getLocation().getBlockZ());
-                    statement1.setBoolean(7, true);
+                    statement1.setString(2, box.getLocation().getWorld().getUID().toString());
+                    statement1.setInt(3, box.getLocation().getBlockX());
+                    statement1.setInt(4, box.getLocation().getBlockY());
+                    statement1.setInt(5, box.getLocation().getBlockZ());
+                    statement1.setBoolean(6, true);
                     statement1.execute();
                     statement1.close();
+                    plugin.getLogger().info("test");
                 }
                 set.close();
                 statement.close();
-
                 con.close();
             } catch (SQLException ex){
                 ex.printStackTrace();
                 return;
             }
+
+            plugin.getLogger().info("UUID : " + uuid.toString());
 
             if (isFound) {
                 e.getView().close();
@@ -909,7 +910,7 @@ public class EventListener implements Listener {
             try {
                 Connection con = DriverManager.getConnection("jdbc:mysql://" + plugin.getConfig().getString("mysqlServer") + ":" + plugin.getConfig().getInt("mysqlPort") + "/" + plugin.getConfig().getString("mysqlDatabase") + plugin.getConfig().getString("mysqlOption"), plugin.getConfig().getString("mysqlUsername"), plugin.getConfig().getString("mysqlPassword"));
 
-                PreparedStatement statement = con.prepareStatement("SELECT * FROM `LockUUIDList` WHERE world = ? AND x = ? AND y = ? AND z = ?");
+                PreparedStatement statement = con.prepareStatement("SELECT * FROM `LockUUIDList` WHERE world = ? AND x = ? AND y = ? AND z = ? AND Active = 1");
                 statement.setString(1, block.getLocation().getWorld().getUID().toString());
                 statement.setInt(2, block.getLocation().getBlockX());
                 statement.setInt(3, block.getLocation().getBlockY());
@@ -925,10 +926,11 @@ public class EventListener implements Listener {
                 ex.printStackTrace();
             }
 
+            plugin.getLogger().info("test");
             if (uuid.equals("")){
                 return;
             }
-            //plugin.getLogger().info(uuid);
+            plugin.getLogger().info(uuid);
             try {
                 Connection con = DriverManager.getConnection("jdbc:mysql://" + plugin.getConfig().getString("mysqlServer") + ":" + plugin.getConfig().getInt("mysqlPort") + "/" + plugin.getConfig().getString("mysqlDatabase") + plugin.getConfig().getString("mysqlOption"), plugin.getConfig().getString("mysqlUsername"), plugin.getConfig().getString("mysqlPassword"));
 
@@ -936,7 +938,7 @@ public class EventListener implements Listener {
                 statement.setString(1, uuid);
                 ResultSet set = statement.executeQuery();
                 if (set.next()){
-                    e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "チェスト保護がかかっています。");
+                    e.getPlayer().sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "保護がかかっています。");
                     e.setCancelled(true);
                 }
 
