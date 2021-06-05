@@ -23,6 +23,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockDamageEvent;
 import org.bukkit.event.entity.*;
 import org.bukkit.event.hanging.HangingBreakEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
@@ -52,16 +53,13 @@ public class EventListener implements Listener {
     private final JDA jda;
     private List<LockCommandUser> lockUserList;
 
-    private Map<UUID, Location> graveList;
     private Map<UUID, Location> chestList;
 
-    public EventListener(Plugin plugin, JDA jda, List<LockCommandUser> lockUserList, Map<UUID, Location> chestList, Map<UUID, Location> graveList){
+    public EventListener(Plugin plugin, JDA jda, List<LockCommandUser> lockUserList){
         this.plugin = plugin;
         this.jda = jda;
 
         this.lockUserList = lockUserList;
-        this.graveList = graveList;
-        this.chestList = chestList;
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
@@ -656,7 +654,6 @@ public class EventListener implements Listener {
         PlayerInventory inventory = e.getEntity().getInventory();
         YamlConfiguration config = new YamlConfiguration();
         UUID DeathUUID = UUID.randomUUID();
-        graveList.put(DeathUUID, player.getLocation());
 
         config.set("x", player.getLocation().getBlockX());
         config.set("y", player.getLocation().getBlockY());
@@ -689,7 +686,6 @@ public class EventListener implements Listener {
         player.getLocation().getWorld().getBlockAt(player.getLocation()).setType(Material.BIRCH_SIGN);
 
         Block block = player.getLocation().getBlock();
-        block.setMetadata("DeathUUID", new FixedMetadataValue(plugin, DeathUUID.toString()));
         Sign sign = (Sign) block.getState();
         sign.line(0, Component.text("[死体]"));
         sign.line(1, Component.text(player.getName()));
@@ -698,6 +694,28 @@ public class EventListener implements Listener {
         player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "ワールド名"+player.getLocation().getWorld().getName()+"の" + "X:" + player.getLocation().getBlockX() + " Y:"+ player.getLocation().getBlockY() + " Z:" + player.getLocation().getBlockZ() + "に死体を生成しました。 (左クリックで回収できます。)");
 
         player.spigot().respawn();
+
+        new Thread(()->{
+            try {
+                Connection con = DriverManager.getConnection("jdbc:mysql://" + plugin.getConfig().getString("mysqlServer") + ":" + plugin.getConfig().getInt("mysqlPort") + "/" + plugin.getConfig().getString("mysqlDatabase") + plugin.getConfig().getString("mysqlOption"), plugin.getConfig().getString("mysqlUsername"), plugin.getConfig().getString("mysqlPassword"));
+                con.setAutoCommit(true);
+
+                PreparedStatement statement = con.prepareStatement("INSERT INTO `DeathList`(`UUID`, `MinecraftUUID`, `x`, `y`, `z`, `Active`) VALUES (?,?,?,?,?,?)");
+                statement.setString(1, DeathUUID.toString());
+                statement.setString(2, e.getEntity().getUniqueId().toString());
+                statement.setInt(3, block.getLocation().getBlockX());
+                statement.setInt(4, block.getLocation().getBlockY());
+                statement.setInt(5, block.getLocation().getBlockZ());
+                statement.setBoolean(6, true);
+
+                statement.execute();
+                statement.close();
+                con.close();
+            } catch (SQLException ex){
+                ex.printStackTrace();
+            }
+        }).start();
+
         e.setCancelled(true);
     }
 
@@ -706,62 +724,84 @@ public class EventListener implements Listener {
         Block block = e.getClickedBlock();
 
         if (block != null && block.getState() instanceof Sign){
-            if (!block.hasMetadata("DeathUUID")){
-                return;
+
+            UUID targetUUID = null;
+            try {
+                Connection con = DriverManager.getConnection("jdbc:mysql://" + plugin.getConfig().getString("mysqlServer") + ":" + plugin.getConfig().getInt("mysqlPort") + "/" + plugin.getConfig().getString("mysqlDatabase") + plugin.getConfig().getString("mysqlOption"), plugin.getConfig().getString("mysqlUsername"), plugin.getConfig().getString("mysqlPassword"));
+                con.setAutoCommit(true);
+
+                PreparedStatement statement = con.prepareStatement("SELECT * FROM DeathList WHERE Active = 1 AND x = ? AND y = ? AND z = ?");
+                statement.setInt(1, block.getLocation().getBlockX());
+                statement.setInt(2, block.getLocation().getBlockY());
+                statement.setInt(3, block.getLocation().getBlockZ());
+
+                ResultSet set = statement.executeQuery();
+                if (set.next()){
+                    targetUUID = UUID.fromString(set.getString("UUID"));
+                }
+
+                set.close();
+                statement.close();
+                con.close();
+            } catch (SQLException ex){
+                ex.printStackTrace();
             }
 
-            if (block.getMetadata("DeathUUID").get(0).value() == null){
+            if (targetUUID == null){
                 return;
             }
-
-            UUID targetUUID = UUID.fromString((String) block.getMetadata("DeathUUID").get(0).value());
-            block.setMetadata("DeathUUID", new FixedMetadataValue(plugin, null));
 
             File file = new File("./" + plugin.getDataFolder().getPath().replaceAll("\\\\", "/") + "/de/" + targetUUID.toString() + ".yml");
 
             if (!file.exists()){
                 plugin.getLogger().info("[死体生成] 存在しないデータ : " + targetUUID.toString() + ".yml");
-                return;
             }
 
-            Sign sign = (Sign) block.getState();
-            TextComponent component = (TextComponent) sign.line(1);
-            plugin.getLogger().info(component.content());
-
-            if (!e.getPlayer().getName().startsWith(component.content())){
-                return;
-            }
-
-            YamlConfiguration config = new YamlConfiguration();
-            try {
-                config.load(file);
-                Material type = null;
-                if (config.isSet("OldBlockType")){
-                    type = Material.getMaterial((String) config.get("OldBlockType"));
-                }
-
-                if (type != null){
-                    block.getLocation().getWorld().getBlockAt(block.getLocation()).setType(type);
-                } else {
-                    block.getLocation().getWorld().getBlockAt(block.getLocation()).setType(Material.AIR);
-                }
-
-                if (config.isSet("exp")){
-                    e.getPlayer().giveExp(config.getInt("exp"));
-                }
-
-                int size = e.getPlayer().getInventory().getSize();
-                for (int i = 0; i < size; i++){
-                    if (config.isSet("item"+i)){
-                        ItemStack stack = config.getItemStack("item" + i);
-                        block.getLocation().getWorld().dropItem(block.getLocation(), stack);
+            if (file.exists()){
+                YamlConfiguration config = new YamlConfiguration();
+                try {
+                    config.load(file);
+                    Material type = null;
+                    if (config.isSet("OldBlockType")){
+                        type = Material.getMaterial((String) config.get("OldBlockType"));
                     }
+
+                    if (type != null){
+                        block.getLocation().getWorld().getBlockAt(block.getLocation()).setType(type);
+                    } else {
+                        block.getLocation().getWorld().getBlockAt(block.getLocation()).setType(Material.AIR);
+                    }
+
+                    if (config.isSet("exp")){
+                        e.getPlayer().giveExp(config.getInt("exp"));
+                    }
+
+                    int size = e.getPlayer().getInventory().getSize();
+                    for (int i = 0; i < size; i++){
+                        if (config.isSet("item"+i)){
+                            ItemStack stack = config.getItemStack("item" + i);
+                            block.getLocation().getWorld().dropItem(block.getLocation(), stack);
+                        }
+                    }
+                } catch (IOException | InvalidConfigurationException ex){
+                    ex.printStackTrace();
                 }
-            } catch (IOException | InvalidConfigurationException ex){
+                file.deleteOnExit();
+            }
+
+            try {
+                Connection con = DriverManager.getConnection("jdbc:mysql://" + plugin.getConfig().getString("mysqlServer") + ":" + plugin.getConfig().getInt("mysqlPort") + "/" + plugin.getConfig().getString("mysqlDatabase") + plugin.getConfig().getString("mysqlOption"), plugin.getConfig().getString("mysqlUsername"), plugin.getConfig().getString("mysqlPassword"));
+                con.setAutoCommit(true);
+
+                PreparedStatement statement = con.prepareStatement("UPDATE `DeathList` SET `Active`= 0 WHERE UUID = ?");
+                statement.setString(1, targetUUID.toString());
+                statement.execute();
+                statement.close();
+                con.close();
+            } catch (SQLException ex){
                 ex.printStackTrace();
             }
 
-            file.deleteOnExit();
         }
     }
 
@@ -802,10 +842,23 @@ public class EventListener implements Listener {
         }
 
         if (block.getState() instanceof Sign){
-            if (!block.hasMetadata("DeathUUID")){
-                return;
+            try {
+                Connection con = DriverManager.getConnection("jdbc:mysql://" + plugin.getConfig().getString("mysqlServer") + ":" + plugin.getConfig().getInt("mysqlPort") + "/" + plugin.getConfig().getString("mysqlDatabase") + plugin.getConfig().getString("mysqlOption"), plugin.getConfig().getString("mysqlUsername"), plugin.getConfig().getString("mysqlPassword"));
+
+                PreparedStatement statement = con.prepareStatement("SELECT * FROM DeathList WHERE Active = 1 AND x = ? AND y = ? AND z = ?");
+                statement.setInt(1, block.getLocation().getBlockX());
+                statement.setInt(2, block.getLocation().getBlockY());
+                statement.setInt(3, block.getLocation().getBlockZ());
+                ResultSet set = statement.executeQuery();
+                if (set.next()){
+                    e.setCancelled(true);
+                }
+                set.close();
+                statement.close();
+                con.close();
+            } catch (SQLException ex){
+                ex.printStackTrace();
             }
-            e.setCancelled(true);
         }
     }
 
