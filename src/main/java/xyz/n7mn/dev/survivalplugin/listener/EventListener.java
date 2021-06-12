@@ -88,7 +88,9 @@ public class EventListener implements Listener {
                 ResultSet set = statement.executeQuery();
                 if (set.next()){
                     for (Player player : plugin.getServer().getOnlinePlayers()){
-                        player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+e.getPlayer().getName()+"さんが入室しました！");
+                        if (!player.isOp()){
+                            player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+e.getPlayer().getName()+"さんが入室しました！");
+                        }
                     }
                     long count = set.getLong("Count");
                     set.close();
@@ -156,7 +158,9 @@ public class EventListener implements Listener {
 
         new Thread(()->{
             for (Player player : plugin.getServer().getOnlinePlayers()){
-                player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+e.getPlayer().getName()+"さんが退出しました！");
+                if (!player.isOp()){
+                    player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+e.getPlayer().getName()+"さんが退出しました！");
+                }
             }
         }).start();
 
