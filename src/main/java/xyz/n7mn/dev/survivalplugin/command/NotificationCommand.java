@@ -3,7 +3,8 @@ package xyz.n7mn.dev.survivalplugin.command;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.TextChannel;
-import net.kyori.adventure.text.Component;
+import net.md_5.bungee.api.chat.ComponentBuilder;
+import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -64,10 +65,12 @@ public class NotificationCommand implements CommandExecutor {
                         sb.append(sdf.format(Date.from(instant)));
                         sb.append(")");
 
-                        Component component = Component.text(sb.toString());
+                        //Component component = Component.text(sb.toString());
 
-                        meta.addPages(Component.text(""));
-                        meta.page(x, component);
+                        //meta.addPages(component);
+                        meta.addPage("");
+                        meta.setPage(x, sb.toString());
+                        //meta.page(x, component);
                         x++;
                     }
 

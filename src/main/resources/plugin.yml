@@ -1,7 +1,7 @@
 name: SurvivalPlugin
 version: @version@
 main: xyz.n7mn.dev.survivalplugin.SurvivalPlugin
-api-version: 1.16
+api-version: 1.17
 load: POSTWORLD
 authors: [ 7mi_chan ]
 description: SurvivalPlugin

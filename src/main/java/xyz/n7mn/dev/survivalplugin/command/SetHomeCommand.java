@@ -1,6 +1,5 @@
 package xyz.n7mn.dev.survivalplugin.command;
 
-import net.kyori.adventure.text.Component;
 import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.ChatColor;
@@ -105,9 +104,12 @@ public class SetHomeCommand implements CommandExecutor {
                 }
 
                 player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+args[0]+"という名前でX:"+player.getLocation().getBlockX()+" Y:"+player.getLocation().getBlockY() + " Z:"+player.getLocation().getBlockZ()+" に設定しました。");
+                //TextComponent component = new TextComponent(ChatColor.UNDERLINE + "削除するには「/delhome "+args[0]+"」と入力してください。");
                 TextComponent component = new TextComponent(ChatColor.UNDERLINE + "削除するには「/delhome "+args[0]+"」と入力してください。");
+                //component.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/delhome " + args[0]));
                 component.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/delhome " + args[0]));
-                player.sendMessage(component);
+                //player.sendMessage(component);
+                player.spigot().sendMessage(component);
             }
 
         }).start();
