@@ -10,7 +10,9 @@ import org.bukkit.plugin.java.JavaPlugin;
 import xyz.n7mn.dev.survivalplugin.command.*;
 import xyz.n7mn.dev.survivalplugin.data.LockCommandUser;
 import xyz.n7mn.dev.survivalplugin.data.PlayerLocationData;
+import xyz.n7mn.dev.survivalplugin.listener.ChestLockListener;
 import xyz.n7mn.dev.survivalplugin.listener.DiscordListner;
+import xyz.n7mn.dev.survivalplugin.listener.ItemframeLockListener;
 import xyz.n7mn.dev.survivalplugin.listener.PaperEventListener;
 import xyz.n7mn.dev.survivalplugin.tab.PlayerTabList;
 import xyz.n7mn.dev.survivalplugin.tab.UserHomeList;
@@ -74,7 +76,9 @@ public final class SurvivalPlugin extends JavaPlugin {
 
         getCommand("de").setExecutor(new DeathCommand());
 
-        getServer().getPluginManager().registerEvents(new PaperEventListener(this, jda, lockUserList), this);
+        getServer().getPluginManager().registerEvents(new PaperEventListener(this, jda), this);
+        getServer().getPluginManager().registerEvents(new ChestLockListener(this, lockUserList), this);
+        getServer().getPluginManager().registerEvents(new ItemframeLockListener(this, lockUserList), this);
 
         getServer().getScheduler().runTaskTimerAsynchronously(this, new WorldReCreateTimer(this), 0L, 20L);
         getLogger().info(getName() + " Ver "+getDescription().getVersion()+" 起動しました。");
@@ -97,10 +101,6 @@ public final class SurvivalPlugin extends JavaPlugin {
 
     public List<PlayerLocationData> getPlayerList() {
         return PlayerList;
-    }
-
-    public boolean isMoveWorld() {
-        return isMoveWorld;
     }
 
     public void setMoveWorld(boolean moveWorld) {
