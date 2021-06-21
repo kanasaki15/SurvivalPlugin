@@ -3,17 +3,15 @@ package xyz.n7mn.dev.survivalplugin.listener;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
-//import io.papermc.paper.event.player.AsyncChatEvent;
+import io.papermc.paper.event.player.AsyncChatEvent;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
-//import net.kyori.adventure.text.Component;
-//import net.kyori.adventure.text.TextComponent;
-//import net.kyori.adventure.text.event.ClickEvent;
-import net.md_5.bungee.api.chat.ClickEvent;
-import net.md_5.bungee.api.chat.TextComponent;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.event.ClickEvent;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -48,13 +46,13 @@ import java.nio.charset.StandardCharsets;
 import java.sql.*;
 import java.util.*;
 
-public class EventListener implements Listener {
+public class PaperEventListener implements Listener {
 
     private final Plugin plugin;
     private final JDA jda;
     private List<LockCommandUser> lockUserList;
 
-    public EventListener(Plugin plugin, JDA jda, List<LockCommandUser> lockUserList){
+    public PaperEventListener(Plugin plugin, JDA jda, List<LockCommandUser> lockUserList){
         this.plugin = plugin;
         this.jda = jda;
 
@@ -63,8 +61,8 @@ public class EventListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void PlayerJoinEvent (PlayerJoinEvent e){
-        //e.joinMessage(Component.text(""));
-        e.setJoinMessage("");
+        e.joinMessage(Component.text(""));
+        //e.setJoinMessage("");
 
         new Thread(()->{
             try {
@@ -134,18 +132,18 @@ public class EventListener implements Listener {
 
                 channel.getHistoryAfter(1, 100).queue(messageHistory -> {
                     List<Message> list = messageHistory.getRetrievedHistory();
-                    // TextComponent component = Component.text(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.UNDERLINE+list.size()+"件のおしらせ"+ChatColor.RESET+"があります。");
-                    TextComponent component = new TextComponent(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.UNDERLINE+list.size()+"件のおしらせ"+ChatColor.RESET+"があります。");
+                    TextComponent component = Component.text(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.UNDERLINE+list.size()+"件のおしらせ"+ChatColor.RESET+"があります。");
+                    //TextComponent component = new TextComponent(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.UNDERLINE+list.size()+"件のおしらせ"+ChatColor.RESET+"があります。");
 
-                    // TextComponent component1 = Component.text("[確認する]");
-                    TextComponent component1 = new TextComponent("[確認する]");
-                    //component1 = component1.clickEvent(ClickEvent.clickEvent(ClickEvent.Action.RUN_COMMAND, "/noti"));
-                    component1.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/noti"));
+                    TextComponent component1 = Component.text("[確認する]");
+                    //TextComponent component1 = new TextComponent("[確認する]");
+                    component1 = component1.clickEvent(ClickEvent.clickEvent(ClickEvent.Action.RUN_COMMAND, "/noti"));
+                    //component1.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/noti"));
 
-                    //e.getPlayer().sendMessage(component);
-                    //e.getPlayer().sendMessage(component1);
-                    e.getPlayer().spigot().sendMessage(component);
-                    e.getPlayer().spigot().sendMessage(component1);
+                    e.getPlayer().sendMessage(component);
+                    e.getPlayer().sendMessage(component1);
+                    //e.getPlayer().spigot().sendMessage(component);
+                    //e.getPlayer().spigot().sendMessage(component1);
                 });
             }
         }).start();
@@ -182,7 +180,7 @@ public class EventListener implements Listener {
             jda.getTextChannelById(plugin.getConfig().getString("ChatChannel")).sendMessage(builder.build()).queue();
         }).start();
     }
-/*
+
     @EventHandler(priority = EventPriority.HIGHEST)
     public void AsyncChatEvent (AsyncChatEvent e){
         // plugin.getLogger().info("test");
@@ -236,10 +234,11 @@ public class EventListener implements Listener {
             builder.setColor(java.awt.Color.ORANGE);
             builder.setDescription(msg);
 
-            jda.getTextChannelById(plugin.getConfig().getString("ChatChannel")).sendMessage(builder.build()).queue();
+            //jda.getTextChannelById(plugin.getConfig().getString("ChatChannel")).sendMessage(builder.build()).queue();
+            jda.getTextChannelById(plugin.getConfig().getString("ChatChannel")).sendMessageEmbeds(builder.build()).queue();
         }).start();
     }
-*/
+
     @EventHandler(priority = EventPriority.HIGHEST)
     public void InventoryOpenEvent(InventoryOpenEvent e){
 
@@ -739,11 +738,12 @@ public class EventListener implements Listener {
         if (event.getMessage().getTextChannel().getId().equals(plugin.getConfig().getString("NotificationChannel"))){
             for (Player player : plugin.getServer().getOnlinePlayers()){
                 player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+"新しいお知らせがあります。");
-                //TextComponent component = Component.text("[確認する]");
-                TextComponent component = new TextComponent("[確認する]");
-                //component = component.clickEvent(ClickEvent.clickEvent(ClickEvent.Action.RUN_COMMAND, "/noti"));
-                component.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/noti"));
-                player.spigot().sendMessage(component);
+                TextComponent component = Component.text("[確認する]");
+                //TextComponent component = new TextComponent("[確認する]");
+                component = component.clickEvent(ClickEvent.clickEvent(ClickEvent.Action.RUN_COMMAND, "/noti"));
+                //component.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/noti"));
+                //player.spigot().sendMessage(component);
+                player.sendMessage(component);
             }
 
             return;

@@ -11,7 +11,7 @@ import xyz.n7mn.dev.survivalplugin.command.*;
 import xyz.n7mn.dev.survivalplugin.data.LockCommandUser;
 import xyz.n7mn.dev.survivalplugin.data.PlayerLocationData;
 import xyz.n7mn.dev.survivalplugin.listener.DiscordListner;
-import xyz.n7mn.dev.survivalplugin.listener.EventListener;
+import xyz.n7mn.dev.survivalplugin.listener.PaperEventListener;
 import xyz.n7mn.dev.survivalplugin.tab.PlayerTabList;
 import xyz.n7mn.dev.survivalplugin.tab.UserHomeList;
 import xyz.n7mn.dev.survivalplugin.timer.WorldReCreateTimer;
@@ -74,7 +74,7 @@ public final class SurvivalPlugin extends JavaPlugin {
 
         getCommand("de").setExecutor(new DeathCommand());
 
-        getServer().getPluginManager().registerEvents(new EventListener(this, jda, lockUserList), this);
+        getServer().getPluginManager().registerEvents(new PaperEventListener(this, jda, lockUserList), this);
 
         getServer().getScheduler().runTaskTimerAsynchronously(this, new WorldReCreateTimer(this), 0L, 20L);
         getLogger().info(getName() + " Ver "+getDescription().getVersion()+" 起動しました。");

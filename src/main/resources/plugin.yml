@@ -1,10 +1,10 @@
 name: SurvivalPlugin
-version: @version@
+version: 1.0
 main: xyz.n7mn.dev.survivalplugin.SurvivalPlugin
 api-version: 1.17
 load: POSTWORLD
 authors: [ 7mi_chan ]
-description: SurvivalPlugin
+description: 'SurvivalPlugin'
 commands:
   sigen:
     usage: '/sigen'
