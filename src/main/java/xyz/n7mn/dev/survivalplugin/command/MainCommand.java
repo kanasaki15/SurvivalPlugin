@@ -41,7 +41,14 @@ public class MainCommand implements CommandExecutor {
                 }
             }
 
-            player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + " なにやらおかしなことになっているようです。運営にお願いしてください。");
+            if (player.getBedSpawnLocation() != null){
+                player.teleport(player.getBedSpawnLocation());
+                return true;
+            }
+
+            player.teleport(player.getServer().getWorld("world").getSpawnLocation());
+
+            // player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + " なにやらおかしなことになっているようです。運営にお願いしてください。");
 
         }
 
