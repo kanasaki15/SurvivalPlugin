@@ -72,6 +72,8 @@ public final class SurvivalPlugin extends JavaPlugin {
         getCommand("lock").setExecutor(new LockCommand(lockUserList));
         getCommand("unlock").setExecutor(new UnLockCommand(lockUserList));
 
+        getCommand("de").setExecutor(new DeathCommand());
+
         getServer().getPluginManager().registerEvents(new EventListener(this, jda, lockUserList), this);
 
         getServer().getScheduler().runTaskTimerAsynchronously(this, new WorldReCreateTimer(this), 0L, 20L);
