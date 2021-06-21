@@ -35,8 +35,10 @@ dependencies {
 }
 
 
-//processResources {
-//    from(sourceSets.main.resources.srcDirs) {
-//        filter ReplaceTokens, tokens: [version: version]
-//    }
-//}
+processResources {
+    //from(sourceSets.main.resources.srcDirs) {
+    //    filter ReplaceTokens, tokens: [version: version]
+    //}
+
+    expand(version:version)
+}

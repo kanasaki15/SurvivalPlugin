@@ -1,5 +1,5 @@
 name: SurvivalPlugin
-version: 1.0
+version: ${version}
 main: xyz.n7mn.dev.survivalplugin.SurvivalPlugin
 api-version: 1.17
 load: POSTWORLD
