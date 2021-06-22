@@ -48,6 +48,8 @@ public final class SurvivalPlugin extends JavaPlugin {
 
         // ワールド関連
         World world = getServer().getWorld("world");
+        World nether = getServer().getWorld("world_nether");
+        World the_end = getServer().getWorld("world_the_end");
 
         WorldCreator sigen_world = WorldCreator.name("sigen");
         WorldCreator sigen_n = WorldCreator.name("sigen_nether");
@@ -65,6 +67,14 @@ public final class SurvivalPlugin extends JavaPlugin {
         World sigen_theend = getServer().getWorld("sigen_end");
         if (world != null){
             world.setPVP(false);
+        }
+
+        if (nether != null){
+            nether.setPVP(false);
+        }
+
+        if (the_end != null){
+            the_end.setPVP(false);
         }
 
         if (sigen != null){
