@@ -33,6 +33,10 @@ public class ChestLockListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST)
     public void InventoryOpenEvent(InventoryOpenEvent e){
 
+        if (e.getInventory().getLocation() == null){
+            return;
+        }
+
         if (e.getInventory().getType() == InventoryType.CHEST){
             boolean isFound = false;
             boolean isAdd = false;
