@@ -45,14 +45,51 @@ public final class SurvivalPlugin extends JavaPlugin {
             e.printStackTrace();
         }
 
-        getServer().createWorld(WorldCreator.name("sigen"));
-        World sigen = getServer().getWorld("sigen");
-        World world = getServer().getWorld("world");
-        sigen.setTime(world.getTime());
-        sigen.setPVP(false);
-        world.setPVP(false);
 
-        getLogger().info("資源ワールドの読み込みに成功しました。 seed : " + sigen.getSeed());
+        // ワールド関連
+        World world = getServer().getWorld("world");
+
+        WorldCreator sigen_world = WorldCreator.name("sigen");
+        WorldCreator sigen_n = WorldCreator.name("sigen_nether");
+        sigen_n.environment(World.Environment.NETHER);
+        WorldCreator sigen_end = WorldCreator.name("sigen_end");
+        sigen_end.environment(World.Environment.THE_END);
+
+        getServer().createWorld(sigen_world);
+        getServer().createWorld(sigen_n);
+        getServer().createWorld(sigen_end);
+
+
+        World sigen = getServer().getWorld("sigen");
+        World sigen_nether = getServer().getWorld("sigen_nether");
+        World sigen_theend = getServer().getWorld("sigen_end");
+        if (world != null){
+            world.setPVP(false);
+        }
+
+        if (sigen != null){
+            if (world != null){
+                sigen.setFullTime(world.getFullTime());
+            }
+            sigen.setPVP(false);
+            getLogger().info("資源ワールドの読み込みに成功しました。 seed : " + sigen.getSeed());
+        }
+
+        if (sigen_nether != null){
+            if (world != null){
+                sigen_nether.setFullTime(world.getFullTime());
+            }
+            sigen_nether.setPVP(false);
+            getLogger().info("資源ネザーワールドの読み込みに成功しました。 seed : " + sigen_nether.getSeed());
+        }
+
+        if (sigen_theend != null){
+            if (world != null){
+                sigen_theend.setFullTime(world.getFullTime());
+            }
+            sigen_theend.setPVP(false);
+            getLogger().info("資源エンドワールドの読み込みに成功しました。 seed : " + sigen_theend.getSeed());
+        }
 
         getCommand("sigen").setExecutor(new SigenCommand(PlayerList, isMoveWorld));
         getCommand("main").setExecutor(new MainCommand(PlayerList));

@@ -25,7 +25,7 @@ public class MainCommand implements CommandExecutor {
 
             Player player = (Player) sender;
 
-            if (!player.getLocation().getWorld().getName().equals("sigen")){
+            if (!player.getLocation().getWorld().getName().startsWith("sigen")){
                 player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "今いるワールドは資源ワールドではないです！！");
                 return true;
             }
