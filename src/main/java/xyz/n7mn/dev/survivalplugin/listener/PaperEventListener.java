@@ -273,11 +273,12 @@ public class PaperEventListener implements Listener {
     public void PlayerDeathEvent(PlayerDeathEvent e){
 
         int exp = e.getDroppedExp();
-        if (e.getEntity().getLocation().getWorld().getName().equals("world_the_end")){
+        if (e.getEntity().getLocation().getWorld().getName().equals("world_the_end") || e.getEntity().getLocation().getWorld().getName().equals("sigen_end")){
             e.setKeepInventory(true);
             e.setKeepLevel(true);
             e.getDrops().clear();
             e.setDroppedExp(0);
+            e.getEntity().spigot().respawn();
             return;
         } else {
             e.setKeepInventory(false);
@@ -319,12 +320,13 @@ public class PaperEventListener implements Listener {
 
         player.getLocation().getWorld().getBlockAt(player.getLocation()).setType(Material.BIRCH_SIGN);
 
+
         Block block = player.getLocation().getBlock();
         Sign sign = (Sign) block.getState();
-        //sign.line(0, Component.text("[死体]"));
-        sign.setLine(0, "[死体]");
-        //sign.line(1, Component.text(player.getName()));
-        sign.setLine(1, player.getName());
+        sign.line(0, Component.text("[死体]"));
+        //sign.setLine(0, "[死体]");
+        sign.line(1, Component.text(player.getName()));
+        //sign.setLine(1, player.getName());
         sign.update();
 
         player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] " + ChatColor.RESET + "ワールド名"+player.getLocation().getWorld().getName()+"の" + "X:" + player.getLocation().getBlockX() + " Y:"+ player.getLocation().getBlockY() + " Z:" + player.getLocation().getBlockZ() + "に死体を生成しました。 (左クリックで回収できます。)");
