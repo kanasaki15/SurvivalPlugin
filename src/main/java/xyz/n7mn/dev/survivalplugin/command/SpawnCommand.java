@@ -22,7 +22,7 @@ public class SpawnCommand implements CommandExecutor {
         if (sender instanceof Player){
             Player player = (Player) sender;
 
-            if (!player.getLocation().getWorld().getName().equals("world")){
+            if (!player.getLocation().getWorld().getName().startsWith("sigen")){
                 player.sendMessage(ChatColor.YELLOW + "[ななみ生活鯖] "+ChatColor.RESET+"通常のワールド以外からは戻れません。");
                 return true;
             }
