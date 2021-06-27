@@ -11,9 +11,13 @@ version = '2.0-beta'
 
 repositories {
     mavenCentral()
+    //maven {
+    //    name = 'papermc'
+    //    url = 'https://papermc.io/repo/repository/maven-public/'
+    //}
     maven {
-        name = 'papermc'
-        url = 'https://papermc.io/repo/repository/maven-public/'
+        name = 'purpur'
+        url = 'https://repo.pl3x.net/'
     }
 
     maven {
@@ -28,7 +32,8 @@ repositories {
 }
 
 dependencies {
-    compileOnly 'io.papermc.paper:paper-api:1.17-R0.1-SNAPSHOT'
+    //compileOnly 'io.papermc.paper:paper-api:1.17-R0.1-SNAPSHOT'
+    compileOnly 'net.pl3x.purpur:purpur-api:1.17-R0.1-SNAPSHOT'
     implementation 'mysql:mysql-connector-java:8.0.25'
     implementation 'com.squareup.okhttp3:okhttp:4.9.0'
     implementation 'net.dv8tion:JDA:4.3.0_281'
